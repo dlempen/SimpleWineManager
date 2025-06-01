@@ -1,0 +1,376 @@
+import SwiftUI
+import PhotosUI
+import Vision
+
+struct AddWineView: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var wineRegions = WineRegions()
+    
+    let wineCategories = ["Red Wine", "White Wine", "Sparkling Wine", "Rosé Wine"]
+
+    @State private var name = ""
+    @State private var producer = ""
+    @State private var vintage = ""
+    @State private var alcohol = ""
+    @State private var quantity: Int = 1
+    @State private var selectedCategory = "Red Wine"
+    @State private var frontImage: UIImage?
+    @State private var backImage: UIImage?
+    @State private var isShowingFrontCamera = false
+    @State private var isShowingBackCamera = false
+    
+    @State private var selectedCountry = ""
+    @State private var selectedRegion = ""
+    @State private var selectedSubregion = ""
+    @State private var selectedType = ""
+    
+    @State private var updatingFromSelection = false
+    
+    init(copyFrom wine: Wine? = nil) {
+        _name = State(initialValue: wine?.name ?? "")
+        _producer = State(initialValue: wine?.producer ?? "")
+        _vintage = State(initialValue: wine?.vintage ?? "")
+        _alcohol = State(initialValue: wine?.alcohol ?? "")
+        _quantity = State(initialValue: Int(wine?.quantity ?? 1))
+        _selectedCategory = State(initialValue: wine?.category ?? "Red Wine")
+        _selectedCountry = State(initialValue: wine?.country ?? "")
+        _selectedRegion = State(initialValue: wine?.region ?? "")
+        _selectedSubregion = State(initialValue: wine?.subregion ?? "")
+        _selectedType = State(initialValue: wine?.type ?? "")
+        
+        // When copying a wine, we don't copy the images
+        _frontImage = State(initialValue: nil)
+        _backImage = State(initialValue: nil)
+    }
+
+    var body: some View {
+        Form {
+                Section(header: Text("Wine Details")) {
+                    Stepper(value: $quantity, in: 1...99) {
+                        Text("Quantity: \(quantity)")
+                    }
+                    
+                    // Wine Category Picker
+                    Picker("Category", selection: $selectedCategory) {
+                        ForEach(wineCategories, id: \.self) { category in
+                            Text(category).tag(category)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    
+                    TextField("Name", text: $name)
+                    TextField("Producer", text: $producer)
+                    TextField("Vintage (Year)", text: $vintage)
+                        .keyboardType(.numberPad)
+                    TextField("Alcohol %", text: $alcohol)
+                        .keyboardType(.decimalPad)
+                    
+                    // Wine Classification Fields
+                    Group {
+                        // Country Picker
+                        Picker("Country", selection: $selectedCountry) {
+                            Text("Select Country").tag("")
+                            ForEach(wineRegions.countries, id: \.self) { country in
+                                Text(country).tag(country)
+                            }
+                        }
+                        .onChange(of: selectedCountry) { _, newValue in
+                            if !updatingFromSelection {
+                                updatingFromSelection = true
+                                if !newValue.isEmpty {
+                                    wineRegions.updateRegions(for: newValue)
+                                    if selectedRegion.isEmpty {
+                                        selectedRegion = ""
+                                        selectedSubregion = ""
+                                        selectedType = ""
+                                    }
+                                }
+                                updatingFromSelection = false
+                            }
+                        }
+                        
+                        // Region Picker
+                        Picker("Region", selection: $selectedRegion) {
+                            Text("Select Region").tag("")
+                            ForEach(wineRegions.regions, id: \.self) { region in
+                                Text(region).tag(region)
+                            }
+                        }
+                        .onChange(of: selectedRegion) { _, newValue in
+                            if !updatingFromSelection {
+                                updatingFromSelection = true
+                                if !newValue.isEmpty {
+                                    if selectedCountry.isEmpty {
+                                        // Try to find the country for this region
+                                        if let match = wineRegions.findMatchByRegion(newValue) {
+                                            selectedCountry = match.country
+                                            wineRegions.updateRegions(for: match.country)
+                                        }
+                                    }
+                                    wineRegions.updateSubregions(for: selectedCountry, region: newValue)
+                                    if selectedSubregion.isEmpty {
+                                        selectedSubregion = ""
+                                        selectedType = ""
+                                    }
+                                }
+                                updatingFromSelection = false
+                            }
+                        }
+                        
+                        // Subregion Picker
+                        Picker("Subregion", selection: $selectedSubregion) {
+                            Text("Select Subregion").tag("")
+                            ForEach(wineRegions.subregions, id: \.self) { subregion in
+                                Text(subregion).tag(subregion)
+                            }
+                        }
+                        .onChange(of: selectedSubregion) { _, newValue in
+                            if !updatingFromSelection {
+                                updatingFromSelection = true
+                                if !newValue.isEmpty {
+                                    if selectedCountry.isEmpty || selectedRegion.isEmpty {
+                                        // Try to find the country and region for this subregion
+                                        if let match = wineRegions.findMatchBySubregion(newValue) {
+                                            selectedCountry = match.country
+                                            wineRegions.updateRegions(for: match.country)
+                                            selectedRegion = match.region
+                                            wineRegions.updateSubregions(for: match.country, region: match.region)
+                                        }
+                                    }
+                                    wineRegions.updateTypes(for: selectedCountry, region: selectedRegion, subregion: newValue)
+                                    if selectedType.isEmpty {
+                                        selectedType = ""
+                                    }
+                                }
+                                updatingFromSelection = false
+                            }
+                        }
+                        
+                        // Type Picker
+                        Picker("Type", selection: $selectedType) {
+                            Text("Select Type").tag("")
+                            ForEach(wineRegions.types, id: \.self) { type in
+                                Text(type).tag(type)
+                            }
+                        }
+                        .onChange(of: selectedType) { _, newValue in
+                            if !updatingFromSelection {
+                                updatingFromSelection = true
+                                if !newValue.isEmpty && (selectedCountry.isEmpty || selectedRegion.isEmpty || selectedSubregion.isEmpty) {
+                                    // Try to find the full hierarchy for this type
+                                    if let match = wineRegions.findMatchByType(newValue) {
+                                        selectedCountry = match.country
+                                        wineRegions.updateRegions(for: match.country)
+                                        selectedRegion = match.region
+                                        wineRegions.updateSubregions(for: match.country, region: match.region)
+                                        selectedSubregion = match.subregion
+                                        wineRegions.updateTypes(for: match.country, region: match.region, subregion: match.subregion)
+                                        // Ensure the type stays selected
+                                        selectedType = match.type
+                                    }
+                                }
+                                updatingFromSelection = false
+                            }
+                        }
+                    }
+                }
+
+                Section(header: Text("Photos")) {
+                    HStack(spacing: 15) {
+                        Image(systemName: "camera")
+                            .foregroundColor(.blue)
+                        
+                        // Front Label
+                        VStack(spacing: 8) {
+                            if let image = frontImage {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(height: 100)
+                                    .cornerRadius(8)
+                                Button(action: { frontImage = nil }) {
+                                    Text("Delete")
+                                        .foregroundColor(.red)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.bordered)
+                            } else {
+                                Button(action: { isShowingFrontCamera = true }) {
+                                    Text("Front Label")
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(.blue)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        
+                        // Back Label
+                        VStack(spacing: 8) {
+                            if let image = backImage {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(height: 100)
+                                    .cornerRadius(8)
+                                Button(action: { backImage = nil }) {
+                                    Text("Delete")
+                                        .foregroundColor(.red)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.bordered)
+                            } else {
+                                Button(action: { isShowingBackCamera = true }) {
+                                    Text("Back Label")
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(.blue)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+            .navigationTitle("Add Wine")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        addWine()
+                        dismiss()
+                    }
+                    .disabled(name.isEmpty)
+                }
+            }
+            .sheet(isPresented: $isShowingFrontCamera) {
+                ImagePicker(image: $frontImage, sourceType: .camera, onImageSelected: { image in
+                    if let image = image, areAllFieldsEmpty() {
+                        extractWineInfo(from: image)
+                    }
+                })
+            }
+            .sheet(isPresented: $isShowingBackCamera) {
+                ImagePicker(image: $backImage, sourceType: .camera, onImageSelected: { image in
+                    if let image = image, areAllFieldsEmpty() {
+                        extractWineInfo(from: image)
+                    }
+                })
+            }
+    }
+
+    private func addWine() {
+        let newWine = Wine(context: viewContext)
+        newWine.id = UUID()
+        newWine.name = name
+        newWine.producer = producer
+        newWine.vintage = vintage
+        newWine.alcohol = alcohol
+        newWine.quantity = Int16(quantity)
+        newWine.country = selectedCountry
+        newWine.region = selectedRegion
+        newWine.subregion = selectedSubregion
+        newWine.type = selectedType
+        newWine.category = selectedCategory
+        
+        if let frontImage = frontImage, let data = frontImage.jpegData(compressionQuality: 0.8) {
+            newWine.frontImageData = data
+        }
+        if let backImage = backImage, let data = backImage.jpegData(compressionQuality: 0.8) {
+            newWine.backImageData = data
+        }
+        try? viewContext.save()
+    }
+    
+    private func areAllFieldsEmpty() -> Bool {
+        return name.isEmpty &&
+               producer.isEmpty &&
+               vintage.isEmpty &&
+               alcohol.isEmpty &&
+               selectedCategory == "Red Wine" && // Default value
+               selectedCountry.isEmpty &&
+               selectedRegion.isEmpty &&
+               selectedSubregion.isEmpty &&
+               selectedType.isEmpty
+    }
+
+    private func extractWineInfo(from image: UIImage) {
+        guard let cgImage = image.cgImage else { return }
+        
+        let request = VNRecognizeTextRequest { request, error in
+            guard let observations = request.results as? [VNRecognizedTextObservation] else { return }
+            let recognizedStrings = observations.compactMap { $0.topCandidates(1).first?.string }
+            let fullText = recognizedStrings.joined(separator: " ")
+            
+            // Extract relevant information using pattern matching
+            DispatchQueue.main.async { [self] in
+                // Try to find wine name (usually first line with letters)
+                if let wineName = recognizedStrings.first(where: { $0.range(of: "[A-Za-z\\s]{3,}", options: .regularExpression) != nil }) {
+                    name = wineName.trimmingCharacters(in: .whitespaces)
+                }
+                
+                // Try to find producer
+                if let producerName = recognizedStrings.dropFirst().first(where: { $0.range(of: "[A-Za-z\\s]{3,}", options: .regularExpression) != nil }) {
+                    producer = producerName.trimmingCharacters(in: .whitespaces)
+                }
+                
+                // Try to find vintage (4 digit year)
+                if let yearMatch = recognizedStrings.first(where: { $0.range(of: "\\b(19|20)\\d{2}\\b", options: .regularExpression) != nil }) {
+                    vintage = yearMatch.trimmingCharacters(in: .whitespaces)
+                }
+                
+                // Try to find alcohol percentage
+                if let alcoholMatch = recognizedStrings.first(where: { $0.range(of: "\\d{1,2}(\\.\\d)?\\s?%|ALC", options: [.regularExpression, .caseInsensitive]) != nil }) {
+                    alcohol = alcoholMatch.trimmingCharacters(in: .whitespaces)
+                }
+                
+                // Try to infer wine category from the text
+                let lowercaseText = fullText.lowercased()
+                if lowercaseText.contains("sparkling") || lowercaseText.contains("champagne") || lowercaseText.contains("prosecco") || lowercaseText.contains("cava") {
+                    selectedCategory = "Sparkling Wine"
+                } else if lowercaseText.contains("rosé") || lowercaseText.contains("rose") || lowercaseText.contains("blush") {
+                    selectedCategory = "Rosé Wine"
+                } else if lowercaseText.contains("white") || lowercaseText.contains("blanc") || lowercaseText.contains("chardonnay") || lowercaseText.contains("riesling") || lowercaseText.contains("sauvignon") {
+                    selectedCategory = "White Wine"
+                } else if lowercaseText.contains("red") || lowercaseText.contains("rouge") || lowercaseText.contains("noir") || lowercaseText.contains("cabernet") || lowercaseText.contains("merlot") || lowercaseText.contains("syrah") || lowercaseText.contains("shiraz") {
+                    selectedCategory = "Red Wine"
+                }
+                
+                // Try to match wine regions
+                let matches = wineRegions.findMatches(in: fullText)
+                if let country = matches.country {
+                    selectedCountry = country
+                    wineRegions.updateRegions(for: country)
+                    
+                    if let region = matches.region {
+                        selectedRegion = region
+                        wineRegions.updateSubregions(for: country, region: region)
+                        
+                        if let subregion = matches.subregion {
+                            selectedSubregion = subregion
+                            wineRegions.updateTypes(for: country, region: region, subregion: subregion)
+                            
+                            if let type = matches.type {
+                                selectedType = type
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        request.recognitionLevel = VNRequestTextRecognitionLevel.accurate
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        try? handler.perform([request])
+    }
+}
