@@ -13,6 +13,8 @@ struct WineDetailView: View {
     @State private var isEditing = false
     @State private var isShowingCopySheet = false
     @StateObject private var wineRegions = WineRegions()
+    @State private var selectedImage: UIImage?
+    @State private var isShowingFullScreen = false
     
     // MARK: - Editing state
     @State private var editName: String = ""
@@ -104,6 +106,39 @@ struct WineDetailView: View {
         .sheet(isPresented: $isShowingCopySheet) {
             NavigationView {
                 AddWineView(copyFrom: wine)
+            }
+        }
+        .overlay {
+            if isShowingFullScreen, let image = selectedImage {
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .transition(.opacity)
+                        .onTapGesture {
+                            withAnimation {
+                                isShowingFullScreen = false
+                            }
+                        }
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                withAnimation {
+                                    isShowingFullScreen = false
+                                }
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.title)
+                                    .foregroundColor(.white)
+                                    .padding()
+                            }
+                        }
+                        Spacer()
+                    }
+                }
             }
         }
     }
@@ -364,6 +399,12 @@ struct WineDetailView: View {
                         .scaledToFit()
                         .frame(height: 150)
                         .cornerRadius(8)
+                        .onTapGesture {
+                            withAnimation {
+                                selectedImage = frontImage
+                                isShowingFullScreen = true
+                            }
+                        }
                 }
                 
                 if let backImageData = wine.backImageData,
@@ -373,6 +414,12 @@ struct WineDetailView: View {
                         .scaledToFit()
                         .frame(height: 150)
                         .cornerRadius(8)
+                        .onTapGesture {
+                            withAnimation {
+                                selectedImage = backImage
+                                isShowingFullScreen = true
+                            }
+                        }
                 }
             }
         }
@@ -412,6 +459,7 @@ struct WineDetailView: View {
     }
     
     private func saveChanges() {
+        // Update the managed object
         wine.name = editName
         wine.producer = editProducer
         wine.vintage = editVintage
@@ -438,11 +486,18 @@ struct WineDetailView: View {
         }
         
         do {
+            // Save the changes
             try viewContext.save()
-            // Force an update to the object
+            
+            // Ensure the wine object is fully updated
             viewContext.refresh(wine, mergeChanges: true)
-            // Make sure the changes are processed immediately
+            
+            // Force UI update for this object
             wine.objectWillChange.send()
+            
+            // Notify parent views that they should refresh
+            NotificationCenter.default.post(name: NSNotification.Name("WineDataDidChange"), object: nil)
+            
             isEditing = false
         } catch {
             print("Error saving context: \(error)")

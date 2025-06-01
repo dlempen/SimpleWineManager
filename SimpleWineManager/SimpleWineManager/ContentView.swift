@@ -8,15 +8,54 @@
 import SwiftUI
 import CoreData
 
+class WineListViewModel: ObservableObject {
+    private var viewContext: NSManagedObjectContext
+    @Published private(set) var lastRefresh = Date()
+    
+    init(context: NSManagedObjectContext) {
+        self.viewContext = context
+        
+        // Listen for CoreData and manual refresh notifications
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(refreshData),
+            name: .NSManagedObjectContextObjectsDidChange,
+            object: viewContext)
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(refreshData),
+            name: NSNotification.Name("WineDataDidChange"),
+            object: nil)
+    }
+    
+    @objc func refreshData() {
+        DispatchQueue.main.async {
+            self.lastRefresh = Date()
+        }
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+}
+
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
-
+    @StateObject private var viewModel: WineListViewModel
+    
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Wine.name, ascending: true)],
         animation: .default)
     private var wines: FetchedResults<Wine>
+    
     @State private var showingAddWine = false
     @State private var searchText = ""
+    
+    init(context: NSManagedObjectContext? = nil) {
+        let context = context ?? PersistenceController.shared.container.viewContext
+        _viewModel = StateObject(wrappedValue: WineListViewModel(context: context))
+    }
 
     var filteredWines: [Wine] {
         if searchText.isEmpty {
@@ -73,25 +112,16 @@ struct ContentView: View {
                 List {
                     ForEach(filteredWines) { wine in
                         NavigationLink(destination: WineDetailView(wine: wine)) {
-                            VStack(alignment: .leading) {
-                                Text("\(wine.name ?? "Unknown") \(wine.vintage ?? "")")
-                                    .font(.headline)
-                                Text("Producer: \(wine.producer ?? "-")")
-                                    .font(.subheadline)
-                                Text("Qty: \(wine.quantity)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+                            WineRowView(wine: wine)
+                                .id("\(wine.id?.uuidString ?? "")-\(wine.quantity)-\(viewModel.lastRefresh)")
                         }
                     }
                     .onDelete(perform: deleteWines)
                 }
                 .listStyle(.plain)
                 .refreshable {
-                    // Refresh each wine object in the list
-                    for wine in wines {
-                        viewContext.refresh(wine, mergeChanges: true)
-                    }
+                    viewContext.rollback() // Discard any pending changes
+                    viewModel.refreshData()
                 }
             }
             .navigationTitle("🍷 My Wine Cellar")
@@ -119,6 +149,23 @@ struct ContentView: View {
         withAnimation {
             offsets.map { filteredWines[$0] }.forEach(viewContext.delete)
             try? viewContext.save()
+            viewModel.refreshData()
+        }
+    }
+}
+
+struct WineRowView: View {
+    @ObservedObject var wine: Wine
+    
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text("\(wine.name ?? "Unknown") \(wine.vintage ?? "")")
+                .font(.headline)
+            Text("Producer: \(wine.producer ?? "-")")
+                .font(.subheadline)
+            Text("Qty: \(wine.quantity)")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
 }
