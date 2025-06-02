@@ -596,6 +596,8 @@ struct WineDetailView: View {
             viewContext.refresh(wine, mergeChanges: true)
             // Make sure the changes are processed immediately
             wine.objectWillChange.send()
+            // Navigate back after successful consumption
+            dismiss()
         } catch {
             print("Error saving context: \(error)")
             wine.quantity += Int16(consumeAmount)
