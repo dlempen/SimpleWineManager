@@ -19,6 +19,11 @@ extension Wine {
     @NSManaged public var subregion: String?
     @NSManaged public var type: String?
     @NSManaged public var category: String?
+    @NSManaged public var price: NSDecimalNumber?
+    @NSManaged public var bottleSize: String?
+    @NSManaged public var readyToTrinkYear: String?
+    @NSManaged public var bestBeforeYear: String?
+    @NSManaged public var storageLocation: String?
 }
 
 extension Wine: Identifiable { }

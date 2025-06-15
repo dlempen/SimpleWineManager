@@ -14,5 +14,10 @@
         <attribute name="subregion" optional="YES" attributeType="String"/>
         <attribute name="type" optional="YES" attributeType="String"/>
         <attribute name="category" optional="YES" attributeType="String"/>
+        <attribute name="price" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
+        <attribute name="bottleSize" optional="YES" attributeType="String"/>
+        <attribute name="readyToTrinkYear" optional="YES" attributeType="String"/>
+        <attribute name="bestBeforeYear" optional="YES" attributeType="String"/>
+        <attribute name="storageLocation" optional="YES" attributeType="String"/>
     </entity>
 </model>

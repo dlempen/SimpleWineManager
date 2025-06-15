@@ -5,6 +5,7 @@ import Vision
 struct AddWineView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var settings: SettingsStore
     @StateObject private var wineRegions = WineRegions()
     
     let wineCategories = ["Red Wine", "White Wine", "Sparkling Wine", "Rosé Wine"]
@@ -19,6 +20,11 @@ struct AddWineView: View {
     @State private var backImage: UIImage?
     @State private var isShowingFrontCamera = false
     @State private var isShowingBackCamera = false
+    @State private var price = ""
+    @State private var bottleSize = ""
+    @State private var readyToTrinkYear = ""
+    @State private var bestBeforeYear = ""
+    @State private var storageLocation = ""
     
     @State private var selectedCountry = ""
     @State private var selectedRegion = ""
@@ -38,6 +44,14 @@ struct AddWineView: View {
         _selectedRegion = State(initialValue: wine?.region ?? "")
         _selectedSubregion = State(initialValue: wine?.subregion ?? "")
         _selectedType = State(initialValue: wine?.type ?? "")
+        _price = State(initialValue: wine?.price?.stringValue ?? "")
+        // Remove unit from bottleSize if copying
+        _bottleSize = State(initialValue: wine?.bottleSize?.replacingOccurrences(of: "ml", with: "")
+            .replacingOccurrences(of: "cl", with: "")
+            .replacingOccurrences(of: "l", with: "") ?? "750")
+        _readyToTrinkYear = State(initialValue: wine?.readyToTrinkYear ?? "")
+        _bestBeforeYear = State(initialValue: wine?.bestBeforeYear ?? "")
+        _storageLocation = State(initialValue: wine?.storageLocation ?? "")
         
         // When copying a wine, we don't copy the images
         _frontImage = State(initialValue: nil)
@@ -59,12 +73,89 @@ struct AddWineView: View {
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     
-                    TextField("Name", text: $name)
-                    TextField("Producer", text: $producer)
-                    TextField("Vintage (Year)", text: $vintage)
-                        .keyboardType(.numberPad)
-                    TextField("Alcohol %", text: $alcohol)
-                        .keyboardType(.decimalPad)
+                    HStack {
+                        Text("Name")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Name", text: $name)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    
+                    HStack {
+                        Text("Producer")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Producer", text: $producer)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    
+                    HStack {
+                        Text("Vintage")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Vintage (Year)", text: $vintage)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.numberPad)
+                    }
+                    
+                    HStack {
+                        Text("Alcohol")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Alcohol", text: $alcohol)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.decimalPad)
+                        Text("%")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Price")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Price", text: $price)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.decimalPad)
+                        Text(settings.currencySymbol)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Bottle Size")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Size", text: $bottleSize)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.numberPad)
+                        Text(settings.bottleSizeUnit)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Drink from")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Ready to drink (Year)", text: $readyToTrinkYear)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.numberPad)
+                    }
+                    
+                    HStack {
+                        Text("Best before")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Best before (Year)", text: $bestBeforeYear)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.numberPad)
+                    }
+                    
+                    HStack {
+                        Text("Storage")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Storage Location", text: $storageLocation)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
                     
                     // Wine Classification Fields
                     Group {
@@ -282,6 +373,11 @@ struct AddWineView: View {
         newWine.subregion = selectedSubregion
         newWine.type = selectedType
         newWine.category = selectedCategory
+        newWine.price = NSDecimalNumber(string: price.isEmpty ? "0" : price)
+        newWine.bottleSize = settings.formatBottleSize(bottleSize)
+        newWine.readyToTrinkYear = readyToTrinkYear
+        newWine.bestBeforeYear = bestBeforeYear
+        newWine.storageLocation = storageLocation
         
         if let frontImage = frontImage, let data = frontImage.jpegData(compressionQuality: 0.8) {
             newWine.frontImageData = data
@@ -301,7 +397,12 @@ struct AddWineView: View {
                selectedCountry.isEmpty &&
                selectedRegion.isEmpty &&
                selectedSubregion.isEmpty &&
-               selectedType.isEmpty
+               selectedType.isEmpty &&
+               price.isEmpty &&
+               bottleSize.isEmpty &&
+               readyToTrinkYear.isEmpty &&
+               bestBeforeYear.isEmpty &&
+               storageLocation.isEmpty
     }
 
     private func extractWineInfo(from image: UIImage) {

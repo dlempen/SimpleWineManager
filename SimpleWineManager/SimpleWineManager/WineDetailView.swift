@@ -6,6 +6,7 @@ struct WineDetailView: View {
     @ObservedObject var wine: Wine
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var settings: SettingsStore
     
     let wineCategories = ["Red Wine", "White Wine", "Sparkling Wine", "Rosé Wine"]
     
@@ -27,6 +28,11 @@ struct WineDetailView: View {
     @State private var editRegion: String = ""
     @State private var editSubregion: String = ""
     @State private var editType: String = ""
+    @State private var editPrice: String = ""
+    @State private var editBottleSize: String = ""
+    @State private var editReadyToTrinkYear: String = ""
+    @State private var editBestBeforeYear: String = ""
+    @State private var editStorageLocation: String = ""
     @State private var editFrontImage: UIImage?
     @State private var editBackImage: UIImage?
     @State private var isShowingFrontCamera = false
@@ -44,6 +50,15 @@ struct WineDetailView: View {
         editRegion = wine.region ?? ""
         editSubregion = wine.subregion ?? ""
         editType = wine.type ?? ""
+        editPrice = wine.price?.stringValue ?? ""
+        // Remove unit from bottleSize when editing
+        editBottleSize = (wine.bottleSize ?? "")
+            .replacingOccurrences(of: "ml", with: "")
+            .replacingOccurrences(of: "cl", with: "")
+            .replacingOccurrences(of: "l", with: "")
+        editReadyToTrinkYear = wine.readyToTrinkYear ?? ""
+        editBestBeforeYear = wine.bestBeforeYear ?? ""
+        editStorageLocation = wine.storageLocation ?? ""
         
         if let frontImageData = wine.frontImageData {
             editFrontImage = UIImage(data: frontImageData)
@@ -159,6 +174,7 @@ struct WineDetailView: View {
                     .padding(.vertical, 8)
                 }
                 
+                // Basic Info Group
                 Group {
                     HStack {
                         Text("Name")
@@ -189,16 +205,59 @@ struct WineDetailView: View {
                         Text("Alcohol")
                             .foregroundColor(.secondary)
                             .frame(width: 100, alignment: .leading)
-                        TextField("Alcohol %", text: $editAlcohol)
+                        TextField("Alcohol", text: $editAlcohol)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .keyboardType(.decimalPad)
+                        Text("%")
+                            .foregroundColor(.secondary)
                     }
                     
                     HStack {
-                        Text("Quantity")
+                        Text("Price")
                             .foregroundColor(.secondary)
                             .frame(width: 100, alignment: .leading)
-                        Stepper("\(editQuantity)", value: $editQuantity, in: 0...999)
+                        TextField("Price", text: $editPrice)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.decimalPad)
+                        Text(settings.currencySymbol)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Bottle Size")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Size", text: $editBottleSize)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.numberPad)
+                        Text(settings.bottleSizeUnit)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Drink from")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Ready to drink (Year)", text: $editReadyToTrinkYear)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.numberPad)
+                    }
+                    
+                    HStack {
+                        Text("Best before")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Best before (Year)", text: $editBestBeforeYear)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.numberPad)
+                    }
+                    
+                    HStack {
+                        Text("Storage")
+                            .foregroundColor(.secondary)
+                            .frame(width: 100, alignment: .leading)
+                        TextField("Storage Location", text: $editStorageLocation)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
                     }
                 }
                 .padding(.vertical, 4)
@@ -256,101 +315,102 @@ struct WineDetailView: View {
                         }
                     }
                 }
-            }
+                .padding(.vertical, 4)
+                
+                Divider()
+                    .padding(.vertical, 8)
 
-            Divider()
-                .padding(.vertical, 8)
+                // Photos Section at the bottom
+                HStack(spacing: 15) {
+                    Image(systemName: "camera")
+                        .foregroundColor(.blue)
 
-            // Photos Section at the bottom
-            HStack(spacing: 15) {
-                Image(systemName: "camera")
-                    .foregroundColor(.blue)
-
-                VStack(spacing: 8) {
-                    if let image = editFrontImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 150)
-                            .cornerRadius(8)
-                        Button(action: { editFrontImage = nil }) {
-                            Text("Delete")
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
+                    VStack(spacing: 8) {
+                        if let image = editFrontImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 150)
+                                .cornerRadius(8)
+                            Button(action: { editFrontImage = nil }) {
+                                Text("Delete")
+                                    .foregroundColor(.red)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                            }
+                            .buttonStyle(.bordered)
+                        } else {
+                            Button(action: { isShowingFrontCamera = true }) {
+                                Text("Front Label")
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.blue)
                         }
-                        .buttonStyle(.bordered)
-                    } else {
-                        Button(action: { isShowingFrontCamera = true }) {
-                            Text("Front Label")
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.blue)
                     }
-                }
-                .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity)
 
-                VStack(spacing: 8) {
-                    if let image = editBackImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 150)
-                            .cornerRadius(8)
-                        Button(action: { editBackImage = nil }) {
-                            Text("Delete")
-                                .foregroundColor(.red)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
+                    VStack(spacing: 8) {
+                        if let image = editBackImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 150)
+                                .cornerRadius(8)
+                            Button(action: { editBackImage = nil }) {
+                                Text("Delete")
+                                    .foregroundColor(.red)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                            }
+                            .buttonStyle(.bordered)
+                        } else {
+                            Button(action: { isShowingBackCamera = true }) {
+                                Text("Back Label")
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.blue)
                         }
-                        .buttonStyle(.bordered)
-                    } else {
-                        Button(action: { isShowingBackCamera = true }) {
-                            Text("Back Label")
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.blue)
                     }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
             }
-            .onAppear {
-                setupEditingState()
+        }
+        .onAppear {
+            setupEditingState()
+        }
+        .onChange(of: editCountry) { oldValue, newValue in
+            if !updatingFromSelection {
+                updatingFromSelection = true
+                wineRegions.updateRegions(for: newValue)
+                editRegion = ""
+                editSubregion = ""
+                editType = ""
+                updatingFromSelection = false
             }
-            .onChange(of: editCountry) { oldValue, newValue in
-                if !updatingFromSelection {
-                    updatingFromSelection = true
-                    wineRegions.updateRegions(for: newValue)
-                    editRegion = ""
+        }
+        .onChange(of: editRegion) { oldValue, newValue in
+            if !updatingFromSelection {
+                updatingFromSelection = true
+                if !newValue.isEmpty {
+                    wineRegions.updateSubregions(for: editCountry, region: newValue)
                     editSubregion = ""
                     editType = ""
-                    updatingFromSelection = false
                 }
+                updatingFromSelection = false
             }
-            .onChange(of: editRegion) { oldValue, newValue in
-                if !updatingFromSelection {
-                    updatingFromSelection = true
-                    if !newValue.isEmpty {
-                        wineRegions.updateSubregions(for: editCountry, region: newValue)
-                        editSubregion = ""
-                        editType = ""
-                    }
-                    updatingFromSelection = false
+        }
+        .onChange(of: editSubregion) { oldValue, newValue in
+            if !updatingFromSelection {
+                updatingFromSelection = true
+                if !newValue.isEmpty {
+                    wineRegions.updateTypes(for: editCountry, region: editRegion, subregion: newValue)
+                    editType = ""
                 }
-            }
-            .onChange(of: editSubregion) { oldValue, newValue in
-                if !updatingFromSelection {
-                    updatingFromSelection = true
-                    if !newValue.isEmpty {
-                        wineRegions.updateTypes(for: editCountry, region: editRegion, subregion: newValue)
-                        editType = ""
-                    }
-                    updatingFromSelection = false
-                }
+                updatingFromSelection = false
             }
         }
     }
@@ -379,13 +439,24 @@ struct WineDetailView: View {
                 DetailRow(label: "Name", value: wine.name ?? "")
                 DetailRow(label: "Producer", value: wine.producer ?? "")
                 DetailRow(label: "Vintage", value: wine.vintage ?? "")
-                DetailRow(label: "Alcohol", value: wine.alcohol ?? "")
+                if let alcohol = wine.alcohol, !alcohol.isEmpty {
+                    DetailRow(label: "Alcohol", value: "\(alcohol)%")
+                }
                 DetailRow(label: "Quantity", value: "\(wine.quantity)")
                 DetailRow(label: "Category", value: wine.category ?? "")
                 DetailRow(label: "Country", value: wine.country ?? "")
                 DetailRow(label: "Region", value: wine.region ?? "")
                 DetailRow(label: "Subregion", value: wine.subregion ?? "")
                 DetailRow(label: "Type", value: wine.type ?? "")
+                if let price = wine.price, price != 0 {
+                    DetailRow(label: "Price", value: "\(price)\(settings.currencySymbol)")
+                }
+                if let bottleSize = wine.bottleSize {
+                    DetailRow(label: "Bottle Size", value: "\(bottleSize)")
+                }
+                DetailRow(label: "Ready to drink", value: wine.readyToTrinkYear ?? "")
+                DetailRow(label: "Best before", value: wine.bestBeforeYear ?? "")
+                DetailRow(label: "Storage", value: wine.storageLocation ?? "")
             }
             
             Divider()
@@ -436,6 +507,15 @@ struct WineDetailView: View {
         editRegion = wine.region ?? ""
         editSubregion = wine.subregion ?? ""
         editType = wine.type ?? ""
+        editPrice = wine.price?.stringValue ?? ""
+        // Remove unit from bottleSize when editing
+        editBottleSize = (wine.bottleSize ?? "")
+            .replacingOccurrences(of: "ml", with: "")
+            .replacingOccurrences(of: "cl", with: "")
+            .replacingOccurrences(of: "l", with: "")
+        editReadyToTrinkYear = wine.readyToTrinkYear ?? ""
+        editBestBeforeYear = wine.bestBeforeYear ?? ""
+        editStorageLocation = wine.storageLocation ?? ""
         
         if let frontData = wine.frontImageData {
             editFrontImage = UIImage(data: frontData)
@@ -470,6 +550,11 @@ struct WineDetailView: View {
         wine.region = editRegion
         wine.subregion = editSubregion
         wine.type = editType
+        wine.price = NSDecimalNumber(string: editPrice.isEmpty ? "0" : editPrice)
+        wine.bottleSize = settings.formatBottleSize(editBottleSize)
+        wine.readyToTrinkYear = editReadyToTrinkYear
+        wine.bestBeforeYear = editBestBeforeYear
+        wine.storageLocation = editStorageLocation
         
         // Handle front image updates and deletions
         if let frontImage = editFrontImage {

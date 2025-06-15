@@ -43,6 +43,7 @@ class WineListViewModel: ObservableObject {
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var viewModel: WineListViewModel
+    @StateObject private var settings = SettingsStore()
     
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Wine.name, ascending: true)],
@@ -50,7 +51,9 @@ struct ContentView: View {
     private var wines: FetchedResults<Wine>
     
     @State private var showingAddWine = false
+    @State private var showingSettings = false
     @State private var searchText = ""
+    @State private var isEditing = false
     
     init(context: NSManagedObjectContext? = nil) {
         let context = context ?? PersistenceController.shared.container.viewContext
@@ -73,6 +76,10 @@ struct ContentView: View {
             let region = wine.region?.lowercased() ?? ""
             let subregion = wine.subregion?.lowercased() ?? ""
             let type = wine.type?.lowercased() ?? ""
+            let bottleSize = wine.bottleSize?.lowercased() ?? ""
+            let readyToTrinkYear = wine.readyToTrinkYear?.lowercased() ?? ""
+            let bestBeforeYear = wine.bestBeforeYear?.lowercased() ?? ""
+            let price = wine.price?.stringValue ?? ""
             
             return name.contains(lowercasedSearch) ||
                    producer.contains(lowercasedSearch) ||
@@ -82,7 +89,11 @@ struct ContentView: View {
                    country.contains(lowercasedSearch) ||
                    region.contains(lowercasedSearch) ||
                    subregion.contains(lowercasedSearch) ||
-                   type.contains(lowercasedSearch)
+                   type.contains(lowercasedSearch) ||
+                   bottleSize.contains(lowercasedSearch) ||
+                   readyToTrinkYear.contains(lowercasedSearch) ||
+                   bestBeforeYear.contains(lowercasedSearch) ||
+                   price.contains(lowercasedSearch)
         }
     }
 
@@ -111,10 +122,10 @@ struct ContentView: View {
                 // Wine List
                 List {
                     ForEach(filteredWines) { wine in
-                        NavigationLink(destination: WineDetailView(wine: wine)) {
+                        NavigationLink(destination: WineDetailView(wine: wine).environmentObject(settings)) {
                             WineRowView(wine: wine)
-                                .id("\(wine.id?.uuidString ?? "")-\(wine.quantity)-\(viewModel.lastRefresh)")
                         }
+                        .id("\(wine.id?.uuidString ?? "")-\(wine.quantity)-\(viewModel.lastRefresh)")
                     }
                     .onDelete(perform: deleteWines)
                 }
@@ -126,23 +137,35 @@ struct ContentView: View {
             }
             .navigationTitle("🍷 My Wine Cellar")
             .toolbar {
-                if !showingAddWine {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: { showingAddWine = true }) {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    EditButton()
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack {
+                        Button(action: {
+                            showingSettings = true
+                        }) {
+                            Image(systemName: "gear")
+                        }
+                        Button(action: {
+                            showingAddWine = true
+                        }) {
                             Label("Add Wine", systemImage: "plus")
                         }
-                    }
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        EditButton()
                     }
                 }
             }
             .sheet(isPresented: $showingAddWine) {
                 NavigationStack {
                     AddWineView()
+                        .environmentObject(settings)
                 }
             }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(settings: settings)
+            }
         }
+        .environmentObject(settings)
     }
 
     private func deleteWines(offsets: IndexSet) {
@@ -156,6 +179,7 @@ struct ContentView: View {
 
 struct WineRowView: View {
     @ObservedObject var wine: Wine
+    @EnvironmentObject var settings: SettingsStore
     
     var body: some View {
         VStack(alignment: .leading) {
@@ -163,13 +187,25 @@ struct WineRowView: View {
                 .font(.headline)
             Text("Producer: \(wine.producer ?? "-")")
                 .font(.subheadline)
-            Text("Qty: \(wine.quantity)")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            HStack {
+                Text("Qty: \(wine.quantity)")
+                if let price = wine.price, price != 0 {
+                    Text("•")
+                    Text("Price: \(price)\(settings.currencySymbol)")
+                }
+                if let size = wine.bottleSize, !size.isEmpty {
+                    Text("•")
+                    Text(size)
+                }
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
         }
     }
 }
 
 #Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    ContentView()
+        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+        .environmentObject(SettingsStore())
 }
