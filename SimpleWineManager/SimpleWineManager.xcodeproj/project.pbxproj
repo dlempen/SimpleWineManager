@@ -27,23 +27,14 @@
 		AE0773A22DEB397E0011E1D2 /* SimpleWineManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SimpleWineManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE0773B42DEB39840011E1D2 /* SimpleWineManagerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SimpleWineManagerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE0773BE2DEB39840011E1D2 /* SimpleWineManagerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SimpleWineManagerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE0773D12DEB39840011E1D2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		AE8659312DFF500400788E7A /* Exceptions for "SimpleWineManager" folder in "SimpleWineManager" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = AE0773A12DEB397E0011E1D2 /* SimpleWineManager */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AE0773A42DEB397E0011E1D2 /* SimpleWineManager */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				AE8659312DFF500400788E7A /* Exceptions for "SimpleWineManager" folder in "SimpleWineManager" target */,
+			children = (
+				AE0773D12DEB39840011E1D2 /* Info.plist */
 			);
 			path = SimpleWineManager;
 			sourceTree = "<group>";
@@ -227,6 +218,7 @@
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
+			dontCopyPlist = 1;
 		};
 		AE0773B22DEB39840011E1D2 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
@@ -409,7 +401,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = JXYNZ48YKP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -440,7 +432,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = JXYNZ48YKP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -470,7 +462,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = JXYNZ48YKP;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -489,7 +481,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = JXYNZ48YKP;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
@@ -507,7 +499,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = JXYNZ48YKP;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 2.3;
@@ -524,7 +516,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = JXYNZ48YKP;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 2.3;
