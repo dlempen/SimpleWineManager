@@ -6,11 +6,25 @@ struct SettingsView: View {
     @State private var showingAddSortOrder = false
     @State private var editingSortOrder: SortOrder?
     
+    private func formatSortOrder(_ order: SortOrder) -> Text {
+        var text = Text("")
+        for (index, field) in order.fields.enumerated() {
+            if index > 0 {
+                text = text + Text(" → ")
+            }
+            let fieldText = order.subtitleFields.contains(field) ?
+                Text(field.rawValue).bold().foregroundColor(.blue) :
+                Text(field.rawValue)
+            text = text + fieldText
+        }
+        return text
+    }
+    
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Sort Orders"),
-                        footer: Text("Choose your preferred wine list sort order.")) {
+                        footer: Text("Choose your preferred wine list sort order. Fields in blue are used as section headers.")) {
                     ForEach(settings.sortOrders) { order in
                         VStack(alignment: .leading) {
                             HStack {
@@ -24,7 +38,7 @@ struct SettingsView: View {
                                 settings.selectedSortOrderId = order.id
                             }
                             
-                            Text(order.fields.map(\.rawValue).joined(separator: " → "))
+                            formatSortOrder(order)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -67,6 +81,23 @@ struct SettingsView: View {
                     }
                     .pickerStyle(SegmentedPickerStyle())
                 }
+                
+                Section(header: Text("Print Settings"),
+                        footer: Text("Customize the title and subtitle for printed wine lists.")) {
+                    HStack {
+                        Text("Print Title")
+                        Spacer()
+                        TextField("Title", text: $settings.printTitle)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    
+                    HStack {
+                        Text("Print Subtitle")
+                        Spacer()
+                        TextField("Subtitle", text: $settings.printSubtitle)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -95,12 +126,14 @@ struct SortOrderEditView: View {
     @State private var name: String = ""
     @State private var selectedFields: [SortField] = []
     @State private var availableFields: [SortField] = SortField.allCases
+    @State private var subtitleFields: Set<SortField> = []
     
     init(settings: SettingsStore, sortOrder: SortOrder?) {
         self.settings = settings
         self.sortOrder = sortOrder
         _name = State(initialValue: sortOrder?.name ?? "")
         _selectedFields = State(initialValue: sortOrder?.fields ?? [])
+        _subtitleFields = State(initialValue: sortOrder?.subtitleFields ?? [])
     }
     
     var body: some View {
@@ -110,17 +143,30 @@ struct SortOrderEditView: View {
                     TextField("Sort Order Name", text: $name)
                 }
                 
-                Section(header: Text("Selected Fields")) {
+                Section(
+                    header: Text("Selected Fields"),
+                    footer: Text("Toggle the checkbox to make a field appear as a subtitle in your wine list. Fields with checkboxes on will create hierarchical sections in your list.")
+                ) {
                     ForEach(selectedFields, id: \.self) { field in
                         HStack {
-                            Text(field.rawValue)
-                            Spacer()
-                            if selectedFields.firstIndex(of: field) != 0 {
-                                Button(action: { moveUp(field) }) {
-                                    Image(systemName: "arrow.up")
+                            Toggle(isOn: Binding(
+                                get: { subtitleFields.contains(field) },
+                                set: { isOn in
+                                    if isOn {
+                                        subtitleFields.insert(field)
+                                    } else {
+                                        subtitleFields.remove(field)
+                                    }
                                 }
+                            )) {
+                                Text(field.rawValue)
                             }
-                            Button(action: { removeField(field) }) {
+                            Spacer()
+                            Button {
+                                withAnimation {
+                                    removeField(field)
+                                }
+                            } label: {
                                 Image(systemName: "minus.circle.fill")
                                     .foregroundColor(.red)
                             }
@@ -166,19 +212,15 @@ struct SortOrderEditView: View {
     
     private func removeField(_ field: SortField) {
         selectedFields.removeAll { $0 == field }
-    }
-    
-    private func moveUp(_ field: SortField) {
-        guard let index = selectedFields.firstIndex(of: field),
-              index > 0 else { return }
-        selectedFields.swapAt(index, index - 1)
+        subtitleFields.remove(field)
     }
     
     private func saveSortOrder() {
         let newOrder = SortOrder(
             id: sortOrder?.id ?? UUID(),
             name: name,
-            fields: selectedFields
+            fields: selectedFields,
+            subtitleFields: subtitleFields
         )
         
         if let existingIndex = settings.sortOrders.firstIndex(where: { $0.id == newOrder.id }) {

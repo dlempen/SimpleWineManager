@@ -201,6 +201,30 @@
         "Central Region": {
           "types": ["Tinta de Toro", "Garnacha"]
         }
+      },
+      "Jumilla": {
+        "Central Region": {
+          "types": ["Monastrell", "Jumilla", "Jumilla Crianza", "Jumilla Reserva"]
+        }
+      },
+      "Bierzo": {
+        "Central Region": {
+          "types": ["Mencía", "Bierzo", "Bierzo Crianza", "Bierzo Reserva", "Godello"]
+        }
+      },
+      "Castilla y León": {
+        "Cigales": {
+          "types": ["Cigales Rosado", "Cigales Tinto", "Tempranillo", "Garnacha"]
+        },
+        "Tierra de León": {
+          "types": ["Prieto Picudo", "Mencía", "Tempranillo"]
+        },
+        "Arribes": {
+          "types": ["Juan García", "Tempranillo", "Garnacha", "Rufete"]
+        },
+        "Tierra del Vino de Zamora": {
+          "types": ["Tempranillo", "Garnacha", "Cabernet Sauvignon"]
+        }
       }
     },
     "Germany": {

@@ -4,11 +4,13 @@ struct SortOrder: Codable, Identifiable, Equatable {
     var id: UUID
     var name: String
     var fields: [SortField]
+    var subtitleFields: Set<SortField>
     
-    init(id: UUID = UUID(), name: String, fields: [SortField]) {
+    init(id: UUID = UUID(), name: String, fields: [SortField], subtitleFields: Set<SortField> = []) {
         self.id = id
         self.name = name
         self.fields = fields
+        self.subtitleFields = subtitleFields
     }
 }
 
@@ -63,6 +65,18 @@ class SettingsStore: ObservableObject {
         }
     }
     
+    @Published var printTitle: String {
+        didSet {
+            UserDefaults.standard.set(printTitle, forKey: "printTitle")
+        }
+    }
+    
+    @Published var printSubtitle: String {
+        didSet {
+            UserDefaults.standard.set(printSubtitle, forKey: "printSubtitle")
+        }
+    }
+    
     static let currencies = [
         "USD ($)", "EUR (€)", "JPY (¥)", "GBP (£)", "CNY (¥)", 
         "AUD ($)", "CAD ($)", "CHF (Fr)", "HKD ($)", "SGD ($)", 
@@ -80,6 +94,8 @@ class SettingsStore: ObservableObject {
     init() {
         self.selectedCurrency = UserDefaults.standard.string(forKey: "selectedCurrency") ?? "EUR (€)"
         self.bottleSizeUnit = UserDefaults.standard.string(forKey: "bottleSizeUnit") ?? "ml"
+        self.printTitle = UserDefaults.standard.string(forKey: "printTitle") ?? "Winelist"
+        self.printSubtitle = UserDefaults.standard.string(forKey: "printSubtitle") ?? ""
         
         // Load sort orders
         if let data = UserDefaults.standard.data(forKey: "sortOrders"),

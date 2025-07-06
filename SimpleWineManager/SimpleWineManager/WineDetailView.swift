@@ -8,7 +8,7 @@ struct WineDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settings: SettingsStore
     
-    let wineCategories = ["Red Wine", "White Wine", "Sparkling Wine", "Rosé Wine"]
+    let wineCategories = ["Red", "White", "Rosé", "Sparkling", "Dessert", "Port"]
     
     @State private var consumeAmount = 1
     @State private var isEditing = false
@@ -647,13 +647,17 @@ struct WineDetailView: View {
                 // Try to infer wine category from the text
                 let lowercaseText = fullText.lowercased()
                 if lowercaseText.contains("sparkling") || lowercaseText.contains("champagne") || lowercaseText.contains("prosecco") || lowercaseText.contains("cava") {
-                    editCategory = "Sparkling Wine"
+                    editCategory = "Sparkling"
                 } else if lowercaseText.contains("rosé") || lowercaseText.contains("rose") || lowercaseText.contains("blush") {
-                    editCategory = "Rosé Wine"
+                    editCategory = "Rosé"
                 } else if lowercaseText.contains("white") || lowercaseText.contains("blanc") || lowercaseText.contains("chardonnay") || lowercaseText.contains("riesling") || lowercaseText.contains("sauvignon") {
-                    editCategory = "White Wine"
+                    editCategory = "White"
                 } else if lowercaseText.contains("red") || lowercaseText.contains("rouge") || lowercaseText.contains("noir") || lowercaseText.contains("cabernet") || lowercaseText.contains("merlot") || lowercaseText.contains("syrah") || lowercaseText.contains("shiraz") {
-                    editCategory = "Red Wine"
+                    editCategory = "Red"
+                } else if lowercaseText.contains("dessert") || lowercaseText.contains("sweet") || lowercaseText.contains("ice wine") || lowercaseText.contains("sauternes") {
+                    editCategory = "Dessert"
+                } else if lowercaseText.contains("port") || lowercaseText.contains("porto") || lowercaseText.contains("fortified") {
+                    editCategory = "Port"
                 }
                 
                 // Try to match wine regions

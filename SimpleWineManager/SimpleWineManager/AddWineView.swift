@@ -8,14 +8,14 @@ struct AddWineView: View {
     @EnvironmentObject var settings: SettingsStore
     @StateObject private var wineRegions = WineRegions()
     
-    let wineCategories = ["Red Wine", "White Wine", "Sparkling Wine", "Rosé Wine"]
+    let wineCategories = ["Red", "White", "Rosé", "Sparkling", "Dessert", "Port"]
 
     @State private var name = ""
     @State private var producer = ""
     @State private var vintage = ""
     @State private var alcohol = ""
     @State private var quantity: Int = 1
-    @State private var selectedCategory = "Red Wine"
+    @State private var selectedCategory = "Red"
     @State private var frontImage: UIImage?
     @State private var backImage: UIImage?
     @State private var isShowingFrontCamera = false
@@ -40,7 +40,7 @@ struct AddWineView: View {
         _vintage = State(initialValue: wine?.vintage ?? "")
         _alcohol = State(initialValue: wine?.alcohol ?? "")
         _quantity = State(initialValue: Int(wine?.quantity ?? 1))
-        _selectedCategory = State(initialValue: wine?.category ?? "Red Wine")
+        _selectedCategory = State(initialValue: wine?.category ?? "Red")
         _selectedCountry = State(initialValue: wine?.country ?? "")
         _selectedRegion = State(initialValue: wine?.region ?? "")
         _selectedSubregion = State(initialValue: wine?.subregion ?? "")
@@ -410,7 +410,7 @@ struct AddWineView: View {
                producer.isEmpty &&
                vintage.isEmpty &&
                alcohol.isEmpty &&
-               selectedCategory == "Red Wine" && // Default value
+               selectedCategory == "Red" && // Default value
                selectedCountry.isEmpty &&
                selectedRegion.isEmpty &&
                selectedSubregion.isEmpty &&
@@ -455,13 +455,17 @@ struct AddWineView: View {
                 // Try to infer wine category from the text
                 let lowercaseText = fullText.lowercased()
                 if lowercaseText.contains("sparkling") || lowercaseText.contains("champagne") || lowercaseText.contains("prosecco") || lowercaseText.contains("cava") {
-                    selectedCategory = "Sparkling Wine"
+                    selectedCategory = "Sparkling"
                 } else if lowercaseText.contains("rosé") || lowercaseText.contains("rose") || lowercaseText.contains("blush") {
-                    selectedCategory = "Rosé Wine"
+                    selectedCategory = "Rosé"
                 } else if lowercaseText.contains("white") || lowercaseText.contains("blanc") || lowercaseText.contains("chardonnay") || lowercaseText.contains("riesling") || lowercaseText.contains("sauvignon") {
-                    selectedCategory = "White Wine"
+                    selectedCategory = "White"
                 } else if lowercaseText.contains("red") || lowercaseText.contains("rouge") || lowercaseText.contains("noir") || lowercaseText.contains("cabernet") || lowercaseText.contains("merlot") || lowercaseText.contains("syrah") || lowercaseText.contains("shiraz") {
-                    selectedCategory = "Red Wine"
+                    selectedCategory = "Red"
+                } else if lowercaseText.contains("dessert") || lowercaseText.contains("sweet") || lowercaseText.contains("ice wine") || lowercaseText.contains("sauternes") {
+                    selectedCategory = "Dessert"
+                } else if lowercaseText.contains("port") || lowercaseText.contains("porto") || lowercaseText.contains("fortified") {
+                    selectedCategory = "Port"
                 }
                 
                 // Try to match wine regions
