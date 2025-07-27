@@ -14,6 +14,7 @@ struct WineDetailView: View {
     @State private var isEditing = false
     @State private var isShowingCopySheet = false
     @StateObject private var wineRegions = WineRegions()
+    @StateObject private var suggestionProvider = SuggestionProvider(context: PersistenceController.shared.container.viewContext)
     @State private var selectedImage: UIImage?
     @State private var isShowingFullScreen = false
     
@@ -85,17 +86,20 @@ struct WineDetailView: View {
     
     // MARK: - Body View
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                if isEditing {
-                    editingContent
-                } else {
-                    viewingContent
+        Group {
+            if isEditing {
+                editingContent
+                    .navigationTitle("Edit Wine")
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        viewingContent
+                    }
+                    .padding()
                 }
+                .navigationTitle(wine.name ?? "Wine Details")
             }
-            .padding()
         }
-        .navigationTitle(wine.name ?? "Wine Details")
         .toolbar {
             if isEditing {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -167,188 +171,156 @@ struct WineDetailView: View {
     
     // MARK: - Editing Content
     private var editingContent: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Wine Details Form
-            Group {
-                // Wine Category Selection
-                Section {
-                    Picker("Category", selection: $editCategory) {
-                        ForEach(wineCategories, id: \.self) { category in
-                            Text(category).tag(category)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .padding(.vertical, 8)
+        Form {
+            Section(header: Text("Wine Details")) {
+                Stepper(value: $editQuantity, in: 0...999) {
+                    Text("Quantity: \(editQuantity)")
                 }
                 
-                // Basic Info Group
-                Group {
-                    HStack {
-                        Text("Name")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        TextField("Name", text: $editName)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                // Wine Category Picker
+                Picker("Category", selection: $editCategory) {
+                    ForEach(wineCategories, id: \.self) { category in
+                        Text(category).tag(category)
                     }
-                    
-                    HStack {
-                        Text("Producer")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        TextField("Producer", text: $editProducer)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
-                    
-                    HStack {
-                        Text("Vintage")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        TextField("Vintage", text: $editVintage)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .keyboardType(.numberPad)
-                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                
+                AutocompleteTextField(
+                    title: "Name",
+                    placeholder: "Name",
+                    text: $editName,
+                    suggestionProvider: suggestionProvider,
+                    fieldType: .name,
+                    keyboardType: .default
+                )
+                
+                AutocompleteTextField(
+                    title: "Producer",
+                    placeholder: "Producer",
+                    text: $editProducer,
+                    suggestionProvider: suggestionProvider,
+                    fieldType: .producer,
+                    keyboardType: .default
+                )
+                
+                HStack {
+                    Text("Vintage")
+                        .foregroundColor(.secondary)
+                        .frame(width: 100, alignment: .leading)
+                    TextField("Vintage (Year)", text: $editVintage)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .keyboardType(.numberPad)
+                }
+                
+                HStack {
+                    Text("Alcohol")
+                        .foregroundColor(.secondary)
+                        .frame(width: 100, alignment: .leading)
+                    TextField("Alcohol", text: $editAlcohol)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .keyboardType(.decimalPad)
+                    Text("%")
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack {
+                    Text("Price")
+                        .foregroundColor(.secondary)
+                        .frame(width: 100, alignment: .leading)
+                    TextField("Price", text: $editPrice)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .keyboardType(.decimalPad)
+                    Text(settings.currencySymbol)
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack {
+                    Text("Bottle Size")
+                        .foregroundColor(.secondary)
+                        .frame(width: 100, alignment: .leading)
+                    TextField("Size", text: $editBottleSize)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .keyboardType(.decimalPad)
+                    Text(settings.bottleSizeUnit)
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack {
+                    Text("Drink from")
+                        .foregroundColor(.secondary)
+                        .frame(width: 100, alignment: .leading)
+                    TextField("Ready to drink (Year)", text: $editReadyToTrinkYear)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .keyboardType(.numberPad)
+                }
+                
+                HStack {
+                    Text("Best before")
+                        .foregroundColor(.secondary)
+                        .frame(width: 100, alignment: .leading)
+                    TextField("Best before (Year)", text: $editBestBeforeYear)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .keyboardType(.numberPad)
+                }
+                
+                AutocompleteTextField(
+                    title: "Storage",
+                    placeholder: "Storage Location",
+                    text: $editStorageLocation,
+                    suggestionProvider: suggestionProvider,
+                    fieldType: .storageLocation,
+                    keyboardType: .default
+                )
+            }
 
-                    HStack {
-                        Text("Quantity")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        Stepper(value: $editQuantity, in: 0...999) {
-                            Text("\(editQuantity)")
-                                .frame(width: 50, alignment: .leading)
-                        }
-                    }
-                    
-                    HStack {
-                        Text("Alcohol")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        TextField("Alcohol", text: $editAlcohol)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .keyboardType(.decimalPad)
-                        Text("%")
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("Price")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        TextField("Price", text: $editPrice)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .keyboardType(.decimalPad)
-                        Text(settings.currencySymbol)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("Bottle Size")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        TextField("Size", text: $editBottleSize)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .keyboardType(.decimalPad)
-                        Text(settings.bottleSizeUnit)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack {
-                        Text("Drink from")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        TextField("Ready to drink (Year)", text: $editReadyToTrinkYear)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .keyboardType(.numberPad)
-                    }
-                    
-                    HStack {
-                        Text("Best before")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        TextField("Best before (Year)", text: $editBestBeforeYear)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .keyboardType(.numberPad)
-                    }
-                    
-                    HStack {
-                        Text("Storage")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        TextField("Storage Location", text: $editStorageLocation)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+            Section(header: Text("Classification")) {
+                Picker("Country", selection: $editCountry) {
+                    Text("Select Country").tag("")
+                    ForEach(wineRegions.countries, id: \.self) { country in
+                        Text(country).tag(country)
                     }
                 }
-                .padding(.vertical, 4)
                 
-                Divider()
-                    .padding(.vertical, 8)
-                
-                // Wine Region Selection
-                Group {
-                    HStack {
-                        Text("Country")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        Picker("", selection: $editCountry) {
-                            Text("Select Country").tag("")
-                            ForEach(wineRegions.countries, id: \.self) { country in
-                                Text(country).tag(country)
-                            }
-                        }
-                    }
-                    
-                    HStack {
-                        Text("Region")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        Picker("", selection: $editRegion) {
-                            Text("Select Region").tag("")
-                            ForEach(wineRegions.regions, id: \.self) { region in
-                                Text(region).tag(region)
-                            }
-                        }
-                    }
-                    
-                    HStack {
-                        Text("Subregion")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        Picker("", selection: $editSubregion) {
-                            Text("Select Subregion").tag("")
-                            ForEach(wineRegions.subregions, id: \.self) { subregion in
-                                Text(subregion).tag(subregion)
-                            }
-                        }
-                    }
-                    
-                    HStack {
-                        Text("Type")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        Picker("", selection: $editType) {
-                            Text("Select Type").tag("")
-                            ForEach(wineRegions.types, id: \.self) { type in
-                                Text(type).tag(type)
-                            }
-                        }
+                Picker("Region", selection: $editRegion) {
+                    Text("Select Region").tag("")
+                    ForEach(wineRegions.regions, id: \.self) { region in
+                        Text(region).tag(region)
                     }
                 }
-                .padding(.vertical, 4)
                 
-                Divider()
-                    .padding(.vertical, 8)
+                Picker("Subregion", selection: $editSubregion) {
+                    Text("Select Subregion").tag("")
+                    ForEach(wineRegions.subregions, id: \.self) { subregion in
+                        Text(subregion).tag(subregion)
+                    }
+                }
+                
+                Picker("Type", selection: $editType) {
+                    Text("Select Type").tag("")
+                    ForEach(wineRegions.types, id: \.self) { type in
+                        Text(type).tag(type)
+                    }
+                }
+            }
 
-                // Photos Section at the bottom
+            Section(header: Text("Photos")) {
                 HStack(spacing: 15) {
                     Image(systemName: "camera")
                         .foregroundColor(.blue)
-
+                    
                     VStack(spacing: 8) {
                         if let image = editFrontImage {
                             Image(uiImage: image)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(height: 150)
+                                .frame(height: 100)
                                 .cornerRadius(8)
+                                .onTapGesture {
+                                    selectedImage = image
+                                    withAnimation {
+                                        isShowingFullScreen = true
+                                    }
+                                }
                             Button(action: { editFrontImage = nil }) {
                                 Text("Delete")
                                     .foregroundColor(.red)
@@ -367,14 +339,20 @@ struct WineDetailView: View {
                         }
                     }
                     .frame(maxWidth: .infinity)
-
+                    
                     VStack(spacing: 8) {
                         if let image = editBackImage {
                             Image(uiImage: image)
                                 .resizable()
                                 .scaledToFit()
-                                .frame(height: 150)
+                                .frame(height: 100)
                                 .cornerRadius(8)
+                                .onTapGesture {
+                                    selectedImage = image
+                                    withAnimation {
+                                        isShowingFullScreen = true
+                                    }
+                                }
                             Button(action: { editBackImage = nil }) {
                                 Text("Delete")
                                     .foregroundColor(.red)
@@ -402,10 +380,15 @@ struct WineDetailView: View {
         .onChange(of: editCountry) { oldValue, newValue in
             if !updatingFromSelection {
                 updatingFromSelection = true
-                wineRegions.updateRegions(for: newValue)
-                editRegion = ""
-                editSubregion = ""
-                editType = ""
+                if !newValue.isEmpty {
+                    wineRegions.updateRegions(for: newValue)
+                } else {
+                    // Reset all fields below when "Select Country" is chosen
+                    editRegion = ""
+                    editSubregion = ""
+                    editType = ""
+                    wineRegions.resetAllOptions()
+                }
                 updatingFromSelection = false
             }
         }
@@ -413,9 +396,24 @@ struct WineDetailView: View {
             if !updatingFromSelection {
                 updatingFromSelection = true
                 if !newValue.isEmpty {
+                    // Only autocomplete country if it's empty
+                    if editCountry.isEmpty {
+                        if let match = wineRegions.findMatchByRegion(newValue) {
+                            editCountry = match.country
+                            wineRegions.updateRegions(for: match.country)
+                        }
+                    }
                     wineRegions.updateSubregions(for: editCountry, region: newValue)
+                } else {
+                    // Reset all fields below when "Select Region" is chosen
                     editSubregion = ""
                     editType = ""
+                    if !editCountry.isEmpty {
+                        wineRegions.updateSubregionsForCountry(editCountry)
+                        wineRegions.updateTypesForCountry(editCountry)
+                    } else {
+                        wineRegions.resetAllOptions()
+                    }
                 }
                 updatingFromSelection = false
             }
@@ -424,8 +422,45 @@ struct WineDetailView: View {
             if !updatingFromSelection {
                 updatingFromSelection = true
                 if !newValue.isEmpty {
+                    // Only autocomplete country and region if they are BOTH empty
+                    if editCountry.isEmpty && editRegion.isEmpty {
+                        if let match = wineRegions.findMatchBySubregion(newValue) {
+                            editCountry = match.country
+                            wineRegions.updateRegions(for: match.country)
+                            editRegion = match.region
+                            wineRegions.updateSubregions(for: match.country, region: match.region)
+                        }
+                    }
                     wineRegions.updateTypes(for: editCountry, region: editRegion, subregion: newValue)
+                } else {
+                    // Reset all fields below when "Select Subregion" is chosen
                     editType = ""
+                    if !editCountry.isEmpty && !editRegion.isEmpty {
+                        wineRegions.updateTypesForCountryAndRegion(editCountry, editRegion)
+                    } else if !editCountry.isEmpty {
+                        wineRegions.updateTypesForCountry(editCountry)
+                    } else {
+                        wineRegions.resetAllOptions()
+                    }
+                }
+                updatingFromSelection = false
+            }
+        }
+        .onChange(of: editType) { oldValue, newValue in
+            if !updatingFromSelection {
+                updatingFromSelection = true
+                if !newValue.isEmpty {
+                    // Only autocomplete country, region, and subregion if they are ALL empty
+                    if editCountry.isEmpty && editRegion.isEmpty && editSubregion.isEmpty {
+                        if let match = wineRegions.findMatchByType(newValue) {
+                            editCountry = match.country
+                            wineRegions.updateRegions(for: match.country)
+                            editRegion = match.region
+                            wineRegions.updateSubregions(for: match.country, region: match.region)
+                            editSubregion = match.subregion
+                            wineRegions.updateTypes(for: match.country, region: match.region, subregion: match.subregion)
+                        }
+                    }
                 }
                 updatingFromSelection = false
             }

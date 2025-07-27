@@ -1,10 +1,24 @@
 import SwiftUI
+import CoreData
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.managedObjectContext) private var viewContext
     @ObservedObject var settings: SettingsStore
     @State private var showingAddSortOrder = false
     @State private var editingSortOrder: SortOrder?
+    @State private var showingWineSelection = false
+    @State private var showingImportPicker = false
+    @State private var showingImportAlert = false
+    @State private var importAlertMessage = ""
+    
+    @StateObject private var exportImportManager: WineExportImportManager
+    
+    init(settings: SettingsStore, context: NSManagedObjectContext) {
+        self.settings = settings
+        _exportImportManager = StateObject(wrappedValue: WineExportImportManager(context: context, settings: settings))
+    }
     
     private func formatSortOrder(_ order: SortOrder) -> Text {
         var text = Text("")
@@ -23,6 +37,24 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("Bottle Size Unit"),
+                        footer: Text("This will be used as the default unit for bottle sizes.")) {
+                    Picker("Select Unit", selection: $settings.bottleSizeUnit) {
+                        ForEach(SettingsStore.bottleSizeUnits, id: \.self) { unit in
+                            Text(unit).tag(unit)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+                
+                Section(header: Text("Currency")) {
+                    Picker("Select Currency", selection: $settings.selectedCurrency) {
+                        ForEach(SettingsStore.currencies, id: \.self) { currency in
+                            Text(currency).tag(currency)
+                        }
+                    }
+                }
+                
                 Section(header: Text("Sort Orders"),
                         footer: Text("Choose your preferred wine list sort order. Fields in blue are used as section headers.")) {
                     ForEach(settings.sortOrders) { order in
@@ -64,38 +96,17 @@ struct SettingsView: View {
                     }
                 }
                 
-                Section(header: Text("Currency")) {
-                    Picker("Select Currency", selection: $settings.selectedCurrency) {
-                        ForEach(SettingsStore.currencies, id: \.self) { currency in
-                            Text(currency).tag(currency)
-                        }
-                    }
-                }
-                
-                Section(header: Text("Bottle Size Unit"),
-                        footer: Text("This will be used as the default unit for bottle sizes.")) {
-                    Picker("Select Unit", selection: $settings.bottleSizeUnit) {
-                        ForEach(SettingsStore.bottleSizeUnits, id: \.self) { unit in
-                            Text(unit).tag(unit)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                }
-                
-                Section(header: Text("Print Settings"),
-                        footer: Text("Customize the title and subtitle for printed wine lists.")) {
-                    HStack {
-                        Text("Print Title")
-                        Spacer()
-                        TextField("Title", text: $settings.printTitle)
-                            .multilineTextAlignment(.trailing)
+                Section(header: Text("Data Management"),
+                        footer: Text("Export your wine collection to share with others, or import wines from a shared collection.")) {
+                    Button(action: { showingWineSelection = true }) {
+                        Label("Export Wines", systemImage: "square.and.arrow.up")
                     }
                     
-                    HStack {
-                        Text("Print Subtitle")
-                        Spacer()
-                        TextField("Subtitle", text: $settings.printSubtitle)
-                            .multilineTextAlignment(.trailing)
+                    Toggle("Import with quantity", isOn: $settings.importWithQuantity)
+                        .help("When enabled, imported wines will keep their original quantities. When disabled, all imported wines will have quantity set to 0.")
+                    
+                    Button(action: { showingImportPicker = true }) {
+                        Label("Import Wines", systemImage: "square.and.arrow.down")
                     }
                 }
             }
@@ -114,6 +125,49 @@ struct SettingsView: View {
             .sheet(item: $editingSortOrder) { order in
                 SortOrderEditView(settings: settings, sortOrder: order)
             }
+            .sheet(isPresented: $showingWineSelection) {
+                WineSelectionView(context: viewContext, settings: settings)
+            }
+            .fileImporter(
+                isPresented: $showingImportPicker,
+                allowedContentTypes: [.simpleWineManager],
+                allowsMultipleSelection: false
+            ) { result in
+                handleImport(result)
+            }
+            .alert("Import Result", isPresented: $showingImportAlert) {
+                Button("OK") { }
+            } message: {
+                Text(importAlertMessage)
+            }
+        }
+    }
+    
+    private func handleImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            
+            let importResult = exportImportManager.importWines(from: url)
+            switch importResult {
+            case .success(let result):
+                if result.skipped > 0 {
+                    importAlertMessage = "Import complete!\n• \(result.imported) wine\(result.imported == 1 ? "" : "s") imported\n• \(result.skipped) duplicate\(result.skipped == 1 ? "" : "s") skipped"
+                } else {
+                    importAlertMessage = "Successfully imported \(result.imported) wine\(result.imported == 1 ? "" : "s")."
+                }
+                
+                // Notify the app that data changed
+                NotificationCenter.default.post(name: NSNotification.Name("WineDataDidChange"), object: nil)
+                
+            case .failure(let error):
+                importAlertMessage = "Import failed: \(error.localizedDescription)"
+            }
+            showingImportAlert = true
+            
+        case .failure(let error):
+            importAlertMessage = "Failed to access file: \(error.localizedDescription)"
+            showingImportAlert = true
         }
     }
 }

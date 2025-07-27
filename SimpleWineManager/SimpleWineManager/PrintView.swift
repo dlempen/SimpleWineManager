@@ -5,6 +5,11 @@ struct PrintView: View {
     @EnvironmentObject var settings: SettingsStore
     @Environment(\.dismiss) private var dismiss
     
+    // Local editable state for print titles
+    @State private var editableTitle: String = ""
+    @State private var editableSubtitle: String = ""
+    @State private var editableTotal: String = ""
+    
     private var filteredWines: [Wine] {
         if viewModel.searchText.isEmpty {
             return viewModel.wines
@@ -28,6 +33,13 @@ struct PrintView: View {
         filteredWines.reduce(0) { $0 + Int($1.quantity) }
     }
     
+    // Helper function to get current date in dd.mm.yyyy format
+    private var currentDateString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd.MM.yyyy"
+        return formatter.string(from: Date())
+    }
+    
     private func getFieldValue(_ field: SortField, for wine: Wine) -> String {
         switch field {
         case .name: return wine.name ?? ""
@@ -38,6 +50,17 @@ struct PrintView: View {
         case .type: return wine.type ?? ""
         case .category: return wine.category ?? ""
         case .price: return wine.price?.stringValue ?? "0"
+        case .quantity: return String(format: "%03d", wine.quantity) // Pad with zeros for proper sorting
+        case .bottleSize: 
+            // Extract numeric value from bottle size for proper numerical sorting
+            guard let bottleSize = wine.bottleSize else { return "00000" }
+            let numericString = bottleSize.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
+            if let numericValue = Double(numericString) {
+                return String(format: "%05.0f", numericValue) // Pad with zeros for proper sorting
+            }
+            return "00000" // Default for invalid values
+        case .readyToTrinkYear: return wine.readyToTrinkYear ?? ""
+        case .bestBeforeYear: return wine.bestBeforeYear ?? ""
         }
     }
     
@@ -94,21 +117,28 @@ struct PrintView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Header
-                    VStack(alignment: .center, spacing: 8) {
-                        Text(settings.printTitle)
+                    // Editable Header Section
+                    VStack(alignment: .center, spacing: 12) {
+                        // Editable Title
+                        TextField("Title", text: $editableTitle)
                             .font(.largeTitle)
                             .fontWeight(.bold)
+                            .multilineTextAlignment(.center)
+                            .textFieldStyle(.plain)
                         
-                        if !settings.printSubtitle.isEmpty {
-                            Text(settings.printSubtitle)
-                                .font(.title2)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Text("Total Wines: \(totalQuantity)")
+                        // Editable Subtitle
+                        TextField("Subtitle", text: $editableSubtitle)
                             .font(.title2)
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .textFieldStyle(.plain)
+                        
+                        // Editable Total Count
+                        TextField("Total", text: $editableTotal)
+                            .font(.title2)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .textFieldStyle(.plain)
                         
                         Divider()
                             .padding(.top, 8)
@@ -126,7 +156,7 @@ struct PrintView: View {
                             } else if !group.title.isEmpty {
                                 // Display section title
                                 VStack(spacing: 0) {
-                                    Text(group.title)
+                                    Text(formatSectionTitle(group.title))
                                         .font(.system(size: group.level == 0 ? 28 : 22))
                                         .fontWeight(group.level == 0 ? .bold : .semibold)
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -149,6 +179,12 @@ struct PrintView: View {
             }
             .navigationTitle("Print Preview")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                // Initialize with default values
+                editableTitle = "Wine List"
+                editableSubtitle = currentDateString
+                editableTotal = "Total Wines: \(totalQuantity)"
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Back") {
@@ -180,37 +216,370 @@ struct PrintView: View {
         }
     }
     
+    private func formatSectionTitle(_ title: String) -> String {
+        // Check if the title looks like a padded bottle size (e.g., "00750")
+        if title.count == 5 && title.allSatisfy(\.isNumber) {
+            // Remove leading zeros and add unit
+            let numericValue = Int(title) ?? 0
+            if numericValue > 0 {
+                return settings.getDisplayBottleSize("\(numericValue)ml")
+            }
+        }
+        
+        // Check if it's a padded quantity (e.g., "001", "012")
+        if title.count == 3 && title.allSatisfy(\.isNumber) {
+            let numericValue = Int(title) ?? 0
+            return "\(numericValue)"
+        }
+        
+        return title
+    }
+    
     private func generateHTMLContent() -> String {
         var html = """
         <html>
         <head>
             <style>
-                body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 20px; }
-                .header { text-align: center; margin-bottom: 30px; }
-                .title { font-size: 24pt; font-weight: bold; margin-bottom: 10px; }
-                .subtitle { font-size: 16pt; color: #666; margin-bottom: 5px; }
-                .sort-info { font-size: 12pt; color: #666; }
-                .section-title-main { font-size: 20pt; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #000; }
-                .section-title-sub { font-size: 16pt; font-weight: 600; margin-top: 15px; margin-bottom: 8px; }
-                .wine-row { margin-bottom: 8px; padding: 5px 0; }
-                .wine-name { font-size: 14pt; font-weight: 600; }
-                .wine-details { font-size: 12pt; color: #666; margin-top: 2px; }
-                hr { border: none; height: 1px; background-color: #ccc; margin: 10px 0; }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+                    margin: 20px; 
+                    line-height: 1.2;
+                    -webkit-print-color-adjust: exact;
+                    color-adjust: exact;
+                    /* Prevent any text from breaking across pages */
+                    -webkit-region-break-inside: avoid;
+                    break-inside: avoid;
+                }
+                .header { 
+                    text-align: center; 
+                    margin-bottom: 20px; 
+                    page-break-after: avoid;
+                }
+                .title { 
+                    font-size: 22pt; 
+                    font-weight: bold; 
+                    margin-bottom: 8px; 
+                    line-height: 1.2;
+                    /* Keep title together as a block */
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                }
+                .subtitle { 
+                    font-size: 14pt; 
+                    color: #666; 
+                    margin-bottom: 4px; 
+                    line-height: 1.2;
+                    /* Keep subtitle together as a block */
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                }
+                .sort-info { 
+                    font-size: 12pt; 
+                    color: #666; 
+                }
+                .section-group {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    margin-bottom: 4px;
+                }
+                .section-title-main { 
+                    font-size: 18pt; 
+                    font-weight: bold; 
+                    margin-top: 16px; 
+                    margin-bottom: 8px; 
+                    border-bottom: 1px solid #000; 
+                    /* Strong orphan prevention - keep with next content */
+                    page-break-after: avoid;
+                    page-break-inside: avoid;
+                    break-after: avoid;
+                    break-inside: avoid;
+                    orphans: 4;
+                    widows: 2;
+                    line-height: 1.3;
+                    /* Allow text wrapping but keep title together */
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                    /* Ensure title stays with following content */
+                    keep-with-next: always;
+                }
+                .section-title-sub { 
+                    font-size: 15pt; 
+                    font-weight: 600; 
+                    margin-top: 18px; 
+                    margin-bottom: 8px; 
+                    /* Strong orphan prevention - keep with next content */
+                    page-break-after: avoid;
+                    page-break-inside: avoid;
+                    break-after: avoid;
+                    break-inside: avoid;
+                    orphans: 3;
+                    widows: 2;
+                    line-height: 1.3;
+                    /* Allow text wrapping but keep title together */
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                    /* Ensure title stays with following content */
+                    keep-with-next: always;
+                }
+                .section-group {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    margin-bottom: 4px;
+                    /* Ensure the entire section group stays together */
+                    orphans: 3;
+                    widows: 2;
+                }
+                .title-with-content {
+                    /* Group titles with their first wine entries */
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    display: block !important;
+                    /* Ensure minimum content stays with title */
+                    orphans: 4 !important;
+                    widows: 3 !important;
+                    margin-bottom: 8px !important;
+                    /* Prevent any breaking within this container */
+                    -webkit-column-break-inside: avoid !important;
+                    column-break-inside: avoid !important;
+                    /* Keep the entire section together */
+                    keep-together: always !important;
+                }
+                .wine-row { 
+                    margin-bottom: 6px; 
+                    padding: 4px 0; 
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    display: block;
+                    min-height: 3em;
+                    position: relative;
+                    line-height: 1.4;
+                    /* Keep wine entries together but allow text wrapping within */
+                }
+                .wine-name { 
+                    font-size: 14pt; 
+                    font-weight: 600; 
+                    line-height: 1.3;
+                    margin-bottom: 3px;
+                    /* Allow text wrapping but keep name block together */
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                }
+                .wine-details { 
+                    font-size: 12pt; 
+                    color: #666; 
+                    line-height: 1.3;
+                    margin-top: 0;
+                    /* Allow text wrapping but keep details block together */
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                }
+                hr { 
+                    border: none; 
+                    height: 1px; 
+                    background-color: #ccc; 
+                    margin: 10px 0; 
+                }
+                
+                /* Print-specific styles */
+                @media print {
+                    * {
+                        box-sizing: border-box !important;
+                        -webkit-print-color-adjust: exact !important;
+                        color-adjust: exact !important;
+                        /* Global line break prevention */
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                    }
+                    
+                    body {
+                        margin: 12px !important;
+                        line-height: 1.15 !important;
+                        font-size: 12pt !important;
+                        /* Prevent any breaking in body */
+                        -webkit-region-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                    }
+                    
+                    .header {
+                        page-break-after: avoid !important;
+                        break-after: avoid !important;
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        margin-bottom: 16px !important;
+                    }
+                    
+                    .title {
+                        page-break-after: avoid !important;
+                        break-after: avoid !important;
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        word-wrap: break-word !important;
+                        overflow-wrap: break-word !important;
+                        font-size: 20pt !important;
+                        line-height: 1.2 !important;
+                    }
+                    
+                    .subtitle {
+                        page-break-after: avoid !important;
+                        break-after: avoid !important;
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        word-wrap: break-word !important;
+                        overflow-wrap: break-word !important;
+                        font-size: 13pt !important;
+                        line-height: 1.2 !important;
+                    }
+                    
+                    .section-title-main {
+                        page-break-after: avoid !important;
+                        break-after: avoid !important;
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        /* Force title to stay with following content */
+                        orphans: 5 !important;
+                        widows: 3 !important;
+                        margin-top: 14px !important;
+                        margin-bottom: 6px !important;
+                        padding-bottom: 2px !important;
+                        min-height: 24px !important;
+                        word-wrap: break-word !important;
+                        overflow-wrap: break-word !important;
+                        font-size: 16pt !important;
+                        line-height: 1.2 !important;
+                        /* Additional properties to ensure title sticks with content */
+                        keep-with-next: always !important;
+                        -webkit-column-break-after: avoid !important;
+                        column-break-after: avoid !important;
+                    }
+                    
+                    .section-title-sub {
+                        page-break-after: avoid !important;
+                        break-after: avoid !important;
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        orphans: 3 !important;
+                        widows: 2 !important;
+                        margin-top: 16px !important;
+                        margin-bottom: 8px !important;
+                        min-height: 20px !important;
+                        word-wrap: break-word !important;
+                        overflow-wrap: break-word !important;
+                        font-size: 14pt !important;
+                        line-height: 1.2 !important;
+                        /* Normalize any special character spacing */
+                        text-rendering: optimizeLegibility !important;
+                        font-kerning: normal !important;
+                    }
+                    
+                    .wine-row {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        page-break-before: auto !important;
+                        page-break-after: auto !important;
+                        margin-bottom: 4px !important;
+                        padding: 3px 0 !important;
+                        min-height: 36px !important;
+                        position: relative !important;
+                        overflow: visible !important;
+                        /* Ensure the entire wine row never breaks */
+                        display: block !important;
+                        line-height: 1.3 !important;
+                    }
+                    
+                    .wine-name {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        margin-bottom: 2px !important;
+                        line-height: 1.2 !important;
+                        font-size: 13pt !important;
+                        word-wrap: break-word !important;
+                        overflow-wrap: break-word !important;
+                        display: block !important;
+                    }
+                    
+                    .wine-details {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        margin-top: 0 !important;
+                        line-height: 1.2 !important;
+                        font-size: 11pt !important;
+                        word-wrap: break-word !important;
+                        overflow-wrap: break-word !important;
+                        display: block !important;
+                    }
+                    
+                    /* Specific rules for smaller paper sizes */
+                    @page {
+                        margin: 12mm !important;
+                        orphans: 4 !important;
+                        widows: 4 !important;
+                    }
+                    
+                    /* Force consistent spacing regardless of content */
+                    .section-title-main + .wine-row,
+                    .section-title-sub + .wine-row {
+                        margin-top: 0 !important;
+                        padding-top: 2px !important;
+                    }
+                    
+                    /* Prevent ANY element from breaking across pages while allowing text wrapping */
+                    h1, h2, h3, h4, h5, h6,
+                    .section-title-main,
+                    .section-title-sub,
+                    .wine-row,
+                    .wine-name,
+                    .wine-details,
+                    div, p, span {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        word-wrap: break-word !important;
+                        overflow-wrap: break-word !important;
+                    }
+                    
+                    /* Allow proper text wrapping */
+                    .wine-row .wine-name,
+                    .wine-row .wine-details {
+                        word-break: normal !important;
+                        word-wrap: break-word !important;
+                        overflow-wrap: break-word !important;
+                        hyphens: auto !important;
+                        -webkit-hyphens: auto !important;
+                        -ms-hyphens: auto !important;
+                    }
+                }
             </style>
         </head>
         <body>
             <div class="header">
-                <div class="title">\(settings.printTitle)</div>
+                <div class="title">\(editableTitle)</div>
         """
         
-        if !settings.printSubtitle.isEmpty {
-            html += "<div class=\"subtitle\">\(settings.printSubtitle)</div>"
+        if !editableSubtitle.isEmpty {
+            html += "<div class=\"subtitle\">\(editableSubtitle)</div>"
         }
         
-        html += "<div class=\"subtitle\">Total Wines: \(totalQuantity)</div>"
+        if !editableTotal.isEmpty {
+            html += "<div class=\"subtitle\">\(editableTotal)</div>"
+        }
         html += "</div>"
         
-        for group in groupedWines() {
+        // Process groups and create sections that keep titles with their wine entries
+        let allGroups = groupedWines()
+        var i = 0
+        var currentSectionHTML = ""
+        var hasSectionTitle = false
+        
+        while i < allGroups.count {
+            let group = allGroups[i]
+            
             if let wine = group.wine {
                 // Wine row for print
                 let vintage = wine.vintage ?? ""
@@ -234,17 +603,54 @@ struct PrintView: View {
                     details.append(storageLocation)
                 }
                 
-                html += """
+                let wineHTML = """
                 <div class="wine-row">
                     <div class="wine-name">\(nameAndVintage), \(producer)</div>
                     <div class="wine-details">\(details.joined(separator: " • "))</div>
                 </div>
                 """
+                
+                if hasSectionTitle {
+                    // Add this wine to the current section
+                    currentSectionHTML += wineHTML
+                    
+                    // Check if the next item is another wine or if we're at the end
+                    let nextIndex = i + 1
+                    let isLastItem = nextIndex >= allGroups.count
+                    let nextIsTitle = !isLastItem && allGroups[nextIndex].wine == nil
+                    
+                    if isLastItem || nextIsTitle {
+                        // Close the current section and add it to HTML
+                        html += "<div class=\"title-with-content\">\(currentSectionHTML)</div>"
+                        currentSectionHTML = ""
+                        hasSectionTitle = false
+                    }
+                } else {
+                    // No section title, add wine directly
+                    html += wineHTML
+                }
+                
             } else if !group.title.isEmpty {
-                // Section title
+                // Section title - clean the title to prevent any spacing issues
+                let cleanTitle = formatSectionTitle(group.title.trimmingCharacters(in: .whitespacesAndNewlines))
                 let cssClass = group.level == 0 ? "section-title-main" : "section-title-sub"
-                html += "<div class=\"\(cssClass)\">\(group.title)</div>"
+                
+                // If we have an open section, close it first
+                if hasSectionTitle {
+                    html += "<div class=\"title-with-content\">\(currentSectionHTML)</div>"
+                }
+                
+                // Start a new section
+                currentSectionHTML = "<div class=\"\(cssClass)\">\(cleanTitle)</div>"
+                hasSectionTitle = true
             }
+            
+            i += 1
+        }
+        
+        // Close any remaining open section
+        if hasSectionTitle {
+            html += "<div class=\"title-with-content\">\(currentSectionHTML)</div>"
         }
         
         html += "</body></html>"

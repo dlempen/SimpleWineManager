@@ -144,6 +144,17 @@ struct ContentView: View {
         case .type: return wine.type ?? ""
         case .category: return wine.category ?? ""
         case .price: return wine.price?.stringValue ?? ""
+        case .quantity: return String(format: "%03d", wine.quantity) // Pad with zeros for proper sorting
+        case .bottleSize: 
+            // Extract numeric value from bottle size for proper numerical sorting
+            guard let bottleSize = wine.bottleSize else { return "00000" }
+            let numericString = bottleSize.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
+            if let numericValue = Double(numericString) {
+                return String(format: "%05.0f", numericValue) // Pad with zeros for proper sorting
+            }
+            return "00000" // Default for invalid values
+        case .readyToTrinkYear: return wine.readyToTrinkYear ?? ""
+        case .bestBeforeYear: return wine.bestBeforeYear ?? ""
         }
     }
     
@@ -189,10 +200,48 @@ struct ContentView: View {
     var totalQuantity: Int {
         filteredWines.reduce(0) { $0 + Int($1.quantity) }
     }
+    
+    var totalBottleSize: Double {
+        filteredWines.reduce(0.0) { total, wine in
+            guard let bottleSize = wine.bottleSize else { return total }
+            // Extract numeric value from bottle size (e.g., "750ml" -> 750)
+            let numericString = bottleSize.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
+            if let numericValue = Double(numericString) {
+                return total + (numericValue * Double(wine.quantity))
+            }
+            return total
+        }
+    }
+    
+    var totalPrice: Decimal {
+        filteredWines.reduce(0) { total, wine in
+            guard let price = wine.price, price != 0 else { return total }
+            return total + (price.decimalValue * Decimal(wine.quantity))
+        }
+    }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // Custom Title Header
+                HStack {
+                    Image("AppIconImage")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 32, height: 32)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    
+                    Text("Simple Wine Manager")
+                        .font(.system(size: 100, weight: .bold, design: .default))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(height: 44)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(.systemBackground))
+                
                 // Search Bar and Total Quantity
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Search wines...", text: $viewModel.searchText)
@@ -202,10 +251,20 @@ struct ContentView: View {
                         .background(Color(.systemBackground))
                     
                     // Total Quantity aligned with wine item quantities
-                    Text("Total Qty: \(totalQuantity)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal)
+                    HStack {
+                        Text("Total Qty: \(totalQuantity)")
+                        if totalBottleSize > 0 {
+                            Text("•")
+                            Text(settings.getDisplayBottleSize("\(Int(totalBottleSize))ml"))
+                        }
+                        if totalPrice > 0 {
+                            Text("•")
+                            Text("\(totalPrice) \(settings.currencySymbol)")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal)
                 }
                 
                 // Wine List with hierarchical sections
@@ -213,10 +272,13 @@ struct ContentView: View {
                     ForEach(Array(groupedWines().enumerated()), id: \.offset) { index, group in
                         if let wine = group.wine {
                             // Display single wine
-                            NavigationLink(destination: WineDetailView(wine: wine).environmentObject(settings)) {
+                            let wineDetail = WineDetailView(wine: wine).environmentObject(settings)
+                            let wineId = "\(wine.id?.uuidString ?? "")-\(wine.quantity)-\(viewModel.lastRefresh)"
+                            
+                            NavigationLink(destination: wineDetail) {
                                 WineRowView(wine: wine)
                             }
-                            .id("\(wine.id?.uuidString ?? "")-\(wine.quantity)-\(viewModel.lastRefresh)")
+                            .id(wineId)
                             .swipeActions(edge: .trailing) {
                                 Button("Delete", role: .destructive) {
                                     deleteWine(wine)
@@ -226,13 +288,18 @@ struct ContentView: View {
                             .deleteDisabled(false)
                         } else if !group.title.isEmpty {
                             // Display section title with custom separator
+                            let fontSize = group.level == 0 ? 28.0 : 22.0
+                            let fontWeight: Font.Weight = group.level == 0 ? .bold : .regular
+                            let topPadding = group.level == 0 ? 16.0 : 8.0
+                            let textColor = group.level == 0 ? Color.primary : Color.secondary
+                            
                             VStack(spacing: 0) {
-                                Text(group.title)
-                                    .font(.system(size: group.level == 0 ? 28 : 22))
-                                    .fontWeight(group.level == 0 ? .bold : .regular)
-                                    .padding(.top, group.level == 0 ? 16 : 8)
+                                Text(formatSectionTitle(group.title))
+                                    .font(.system(size: fontSize))
+                                    .fontWeight(fontWeight)
+                                    .padding(.top, topPadding)
                                     .padding(.bottom, 4)
-                                    .foregroundStyle(group.level == 0 ? .primary : .secondary)
+                                    .foregroundStyle(textColor)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.horizontal)
                                 
@@ -257,16 +324,10 @@ struct ContentView: View {
                     viewModel.refreshData()
                 }
             }
-            .navigationTitle("🍷 My Wine Cellar")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        showingPrintView = true
-                    }) {
-                        Image(systemName: "printer")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
                     HStack {
                         Button(action: {
                             showingSettings = true
@@ -274,10 +335,17 @@ struct ContentView: View {
                             Image(systemName: "gear")
                         }
                         Button(action: {
-                            showingAddWine = true
+                            showingPrintView = true
                         }) {
-                            Label("Add Wine", systemImage: "plus")
+                            Image(systemName: "printer")
                         }
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingAddWine = true
+                    }) {
+                        Label("Add Wine", systemImage: "plus")
                     }
                 }
             }
@@ -288,7 +356,7 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $showingSettings) {
-                SettingsView(settings: settings)
+                SettingsView(settings: settings, context: viewContext)
             }
             .sheet(isPresented: $showingPrintView) {
                 PrintView(viewModel: viewModel)
@@ -340,6 +408,25 @@ struct ContentView: View {
             return nextGroup.wine != nil
         }
         return false
+    }
+    
+    private func formatSectionTitle(_ title: String) -> String {
+        // Check if the title looks like a padded bottle size (e.g., "00750")
+        if title.count == 5 && title.allSatisfy(\.isNumber) {
+            // Remove leading zeros and add unit
+            let numericValue = Int(title) ?? 0
+            if numericValue > 0 {
+                return settings.getDisplayBottleSize("\(numericValue)ml")
+            }
+        }
+        
+        // Check if it's a padded quantity (e.g., "001", "012")
+        if title.count == 3 && title.allSatisfy(\.isNumber) {
+            let numericValue = Int(title) ?? 0
+            return "\(numericValue)"
+        }
+        
+        return title
     }
 }
 

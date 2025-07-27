@@ -7,6 +7,7 @@ struct AddWineView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settings: SettingsStore
     @StateObject private var wineRegions = WineRegions()
+    @StateObject private var suggestionProvider = SuggestionProvider(context: PersistenceController.shared.container.viewContext)
     
     let wineCategories = ["Red", "White", "Rosé", "Sparkling", "Dessert", "Port"]
 
@@ -91,21 +92,23 @@ struct AddWineView: View {
                 }
                 .pickerStyle(SegmentedPickerStyle())
                 
-                HStack {
-                    Text("Name")
-                        .foregroundColor(.secondary)
-                        .frame(width: 100, alignment: .leading)
-                    TextField("Name", text: $name)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
+                AutocompleteTextField(
+                    title: "Name",
+                    placeholder: "Name",
+                    text: $name,
+                    suggestionProvider: suggestionProvider,
+                    fieldType: .name,
+                    keyboardType: .default
+                )
                 
-                HStack {
-                    Text("Producer")
-                        .foregroundColor(.secondary)
-                        .frame(width: 100, alignment: .leading)
-                    TextField("Producer", text: $producer)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
+                AutocompleteTextField(
+                    title: "Producer",
+                    placeholder: "Producer",
+                    text: $producer,
+                    suggestionProvider: suggestionProvider,
+                    fieldType: .producer,
+                    keyboardType: .default
+                )
                 
                 HStack {
                     Text("Vintage")
@@ -167,13 +170,14 @@ struct AddWineView: View {
                         .keyboardType(.numberPad)
                 }
                 
-                HStack {
-                    Text("Storage")
-                        .foregroundColor(.secondary)
-                        .frame(width: 100, alignment: .leading)
-                    TextField("Storage Location", text: $storageLocation)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
+                AutocompleteTextField(
+                    title: "Storage",
+                    placeholder: "Storage Location",
+                    text: $storageLocation,
+                    suggestionProvider: suggestionProvider,
+                    fieldType: .storageLocation,
+                    keyboardType: .default
+                )
             }
 
             Section(header: Text("Classification")) {
@@ -188,11 +192,12 @@ struct AddWineView: View {
                         updatingFromSelection = true
                         if !newValue.isEmpty {
                             wineRegions.updateRegions(for: newValue)
-                            if selectedRegion.isEmpty {
-                                selectedRegion = ""
-                                selectedSubregion = ""
-                                selectedType = ""
-                            }
+                        } else {
+                            // Reset all fields below when "Select Country" is chosen
+                            selectedRegion = ""
+                            selectedSubregion = ""
+                            selectedType = ""
+                            wineRegions.resetAllOptions()
                         }
                         updatingFromSelection = false
                     }
@@ -208,6 +213,7 @@ struct AddWineView: View {
                     if !updatingFromSelection {
                         updatingFromSelection = true
                         if !newValue.isEmpty {
+                            // Only autocomplete country if it's empty
                             if selectedCountry.isEmpty {
                                 if let match = wineRegions.findMatchByRegion(newValue) {
                                     selectedCountry = match.country
@@ -215,9 +221,15 @@ struct AddWineView: View {
                                 }
                             }
                             wineRegions.updateSubregions(for: selectedCountry, region: newValue)
-                            if selectedSubregion.isEmpty {
-                                selectedSubregion = ""
-                                selectedType = ""
+                        } else {
+                            // Reset all fields below when "Select Region" is chosen
+                            selectedSubregion = ""
+                            selectedType = ""
+                            if !selectedCountry.isEmpty {
+                                wineRegions.updateSubregionsForCountry(selectedCountry)
+                                wineRegions.updateTypesForCountry(selectedCountry)
+                            } else {
+                                wineRegions.resetAllOptions()
                             }
                         }
                         updatingFromSelection = false
@@ -234,7 +246,8 @@ struct AddWineView: View {
                     if !updatingFromSelection {
                         updatingFromSelection = true
                         if !newValue.isEmpty {
-                            if selectedCountry.isEmpty || selectedRegion.isEmpty {
+                            // Only autocomplete country and region if they are BOTH empty
+                            if selectedCountry.isEmpty && selectedRegion.isEmpty {
                                 if let match = wineRegions.findMatchBySubregion(newValue) {
                                     selectedCountry = match.country
                                     wineRegions.updateRegions(for: match.country)
@@ -243,8 +256,15 @@ struct AddWineView: View {
                                 }
                             }
                             wineRegions.updateTypes(for: selectedCountry, region: selectedRegion, subregion: newValue)
-                            if selectedType.isEmpty {
-                                selectedType = ""
+                        } else {
+                            // Reset all fields below when "Select Subregion" is chosen
+                            selectedType = ""
+                            if !selectedCountry.isEmpty && !selectedRegion.isEmpty {
+                                wineRegions.updateTypesForCountryAndRegion(selectedCountry, selectedRegion)
+                            } else if !selectedCountry.isEmpty {
+                                wineRegions.updateTypesForCountry(selectedCountry)
+                            } else {
+                                wineRegions.resetAllOptions()
                             }
                         }
                         updatingFromSelection = false
@@ -260,15 +280,17 @@ struct AddWineView: View {
                 .onChange(of: selectedType) { _, newValue in
                     if !updatingFromSelection {
                         updatingFromSelection = true
-                        if !newValue.isEmpty && (selectedCountry.isEmpty || selectedRegion.isEmpty || selectedSubregion.isEmpty) {
-                            if let match = wineRegions.findMatchByType(newValue) {
-                                selectedCountry = match.country
-                                wineRegions.updateRegions(for: match.country)
-                                selectedRegion = match.region
-                                wineRegions.updateSubregions(for: match.country, region: match.region)
-                                selectedSubregion = match.subregion
-                                wineRegions.updateTypes(for: match.country, region: match.region, subregion: match.subregion)
-                                selectedType = match.type
+                        if !newValue.isEmpty {
+                            // Only autocomplete country, region, and subregion if they are ALL empty
+                            if selectedCountry.isEmpty && selectedRegion.isEmpty && selectedSubregion.isEmpty {
+                                if let match = wineRegions.findMatchByType(newValue) {
+                                    selectedCountry = match.country
+                                    wineRegions.updateRegions(for: match.country)
+                                    selectedRegion = match.region
+                                    wineRegions.updateSubregions(for: match.country, region: match.region)
+                                    selectedSubregion = match.subregion
+                                    wineRegions.updateTypes(for: match.country, region: match.region, subregion: match.subregion)
+                                }
                             }
                         }
                         updatingFromSelection = false
@@ -406,6 +428,13 @@ struct AddWineView: View {
     }
     
     private func areAllFieldsEmpty() -> Bool {
+        // Check if bottle size is at default value (750 in any unit)
+        let bottleSizeIsDefault = bottleSize.isEmpty || 
+                                 bottleSize == "750" || 
+                                 bottleSize == "75" || 
+                                 bottleSize == "7.5" || 
+                                 bottleSize == "0.75"
+        
         return name.isEmpty &&
                producer.isEmpty &&
                vintage.isEmpty &&
@@ -416,7 +445,7 @@ struct AddWineView: View {
                selectedSubregion.isEmpty &&
                selectedType.isEmpty &&
                price.isEmpty &&
-               bottleSize.isEmpty &&
+               bottleSizeIsDefault &&
                readyToTrinkYear.isEmpty &&
                bestBeforeYear.isEmpty &&
                storageLocation.isEmpty
