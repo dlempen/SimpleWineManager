@@ -1,4 +1,4 @@
-# Privacy Policy for Wine Manager
+# Privacy Policy for Simple Wine Manager
 
 **Last Updated: July 20, 2025**
 
