@@ -67,17 +67,82 @@ class WineRegions: ObservableObject {
     func updateRegions(for country: String) {
         if let countryRegions = hierarchy?.wineRegions[country] {
             regions = Array(countryRegions.keys).sorted()
+            // Also update all subregions and types available for this country
+            updateSubregionsForCountry(country)
+            updateTypesForCountry(country)
+        } else {
+            regions = []
+            subregions = []
+            types = []
         }
     }
     
     func updateSubregions(for country: String, region: String) {
         if let regionSubregions = hierarchy?.wineRegions[country]?[region] {
             subregions = Array(regionSubregions.keys).sorted()
+            // Also update all types available for this country and region
+            updateTypesForCountryAndRegion(country, region)
+        } else {
+            subregions = []
+            types = []
         }
     }
     
     func updateTypes(for country: String, region: String, subregion: String) {
         types = hierarchy?.wineRegions[country]?[region]?[subregion]?["types"] ?? []
+    }
+    
+    // Helper methods to update all available options for lower levels
+    func updateSubregionsForCountry(_ country: String) {
+        guard let countryRegions = hierarchy?.wineRegions[country] else {
+            subregions = []
+            return
+        }
+        
+        var allSubregions = Set<String>()
+        for (_, subregions) in countryRegions {
+            for (subregion, _) in subregions {
+                allSubregions.insert(subregion)
+            }
+        }
+        subregions = Array(allSubregions).sorted()
+    }
+    
+    func updateTypesForCountry(_ country: String) {
+        guard let countryRegions = hierarchy?.wineRegions[country] else {
+            types = []
+            return
+        }
+        
+        var allTypes = Set<String>()
+        for (_, subregions) in countryRegions {
+            for (_, typeDict) in subregions {
+                if let types = typeDict["types"] {
+                    types.forEach { allTypes.insert($0) }
+                }
+            }
+        }
+        types = Array(allTypes).sorted()
+    }
+    
+    func updateTypesForCountryAndRegion(_ country: String, _ region: String) {
+        guard let regionSubregions = hierarchy?.wineRegions[country]?[region] else {
+            types = []
+            return
+        }
+        
+        var allTypes = Set<String>()
+        for (_, typeDict) in regionSubregions {
+            if let types = typeDict["types"] {
+                types.forEach { allTypes.insert($0) }
+            }
+        }
+        types = Array(allTypes).sorted()
+    }
+    
+    // Method to reset all options when "Select..." is chosen
+    func resetAllOptions() {
+        updateAllOptions()
     }
     
     func findMatches(in text: String) -> (country: String?, region: String?, subregion: String?, type: String?) {

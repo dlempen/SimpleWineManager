@@ -89,6 +89,80 @@
         "Central Region": {
           "types": ["Chignin", "Chignin-Bergeron", "Roussette de Savoie"]
         }
+      },
+      "Beaujolais": {
+        "Beaujolais Crus": {
+          "types": ["Moulin-à-Vent", "Morgon", "Fleurie", "Chiroubles", "Juliénas", "Saint-Amour", "Chénas", "Régnié", "Brouilly", "Côte de Brouilly"]
+        },
+        "Beaujolais Villages": {
+          "types": ["Beaujolais Villages", "Beaujolais-Villages"]
+        },
+        "Beaujolais": {
+          "types": ["Beaujolais", "Beaujolais Nouveau"]
+        }
+      },
+      "Brittany": {
+        "Muscadet Region": {
+          "types": ["Muscadet Côtes de Grandlieu", "Gros Plant du Pays Nantais"]
+        },
+        "Loire-Atlantique": {
+          "types": ["Coteaux d'Ancenis", "Fiefs Vendéens"]
+        }
+      },
+      "Corsica": {
+        "Northern Corsica": {
+          "types": ["Patrimonio", "Coteaux du Cap Corse", "Muscat du Cap Corse"]
+        },
+        "Central Corsica": {
+          "types": ["Ajaccio", "Vin de Corse"]
+        },
+        "Southern Corsica": {
+          "types": ["Figari", "Porto-Vecchio", "Sartène"]
+        }
+      },
+      "Île-de-France": {
+        "Seine-et-Marne": {
+          "types": ["Vin de Pays d'Île-de-France"]
+        },
+        "Val-de-Marne": {
+          "types": ["Vin de Pays d'Île-de-France"]
+        }
+      },
+      "Normandy": {
+        "Calvados": {
+          "types": ["Pommeau de Normandie", "Cidre de Normandie"]
+        },
+        "Manche": {
+          "types": ["Pommeau de Normandie", "Cidre du Cotentin"]
+        }
+      },
+      "Picardy": {
+        "Aisne": {
+          "types": ["Vin de Pays de l'Aisne"]
+        },
+        "Oise": {
+          "types": ["Vin de Pays de l'Oise"]
+        }
+      },
+      "South West France": {
+        "Cahors": {
+          "types": ["Cahors", "Cahors Malbec"]
+        },
+        "Madiran": {
+          "types": ["Madiran", "Pacherenc du Vic-Bilh"]
+        },
+        "Gaillac": {
+          "types": ["Gaillac Rouge", "Gaillac Blanc", "Gaillac Perlé", "Gaillac Doux"]
+        },
+        "Jurançon": {
+          "types": ["Jurançon", "Jurançon Sec"]
+        },
+        "Bergerac": {
+          "types": ["Bergerac Rouge", "Bergerac Blanc", "Monbazillac", "Pécharmant"]
+        },
+        "Buzet": {
+          "types": ["Buzet Rouge", "Buzet Blanc", "Buzet Rosé"]
+        }
       }
     },
     "Italy": {
@@ -100,7 +174,13 @@
           "types": ["Barbaresco", "Barbaresco Riserva"]
         },
         "Alba": {
-          "types": ["Barbera d'Alba", "Dolcetto d'Alba"]
+          "types": ["Barbera d'Alba", "Dolcetto d'Alba", "Nebbiolo d'Alba"]
+        },
+        "Langhe": {
+          "types": ["Langhe Nebbiolo", "Alta Langa", "Freisa"]
+        },
+        "Roero": {
+          "types": ["Arneis"]
         },
         "Asti": {
           "types": ["Barbera d'Asti", "Moscato d'Asti", "Asti Spumante"]
@@ -155,6 +235,77 @@
         },
         "Colli Orientali": {
           "types": ["Picolit", "Ramandolo", "Schioppettino"]
+        }
+      },
+      "Abruzzo": {
+        "Montepulciano d'Abruzzo": {
+          "types": ["Montepulciano d'Abruzzo", "Montepulciano d'Abruzzo Riserva", "Montepulciano d'Abruzzo Colline Teramane"]
+        },
+        "Trebbiano d'Abruzzo": {
+          "types": ["Trebbiano d'Abruzzo", "Trebbiano d'Abruzzo Superiore"]
+        },
+        "Cerasuolo d'Abruzzo": {
+          "types": ["Cerasuolo d'Abruzzo", "Cerasuolo d'Abruzzo Superiore"]
+        }
+      },
+      "Aosta Valley": {
+        "Valle d'Aosta": {
+          "types": ["Petite Arvine", "Fumin", "Torrette", "Enfer d'Arvier"]
+        },
+        "Blanc de Morgex": {
+          "types": ["Blanc de Morgex et de La Salle"]
+        }
+      },
+      "Basilicata": {
+        "Aglianico del Vulture": {
+          "types": ["Aglianico del Vulture", "Aglianico del Vulture Superiore", "Aglianico del Vulture Superiore Riserva"]
+        },
+        "Matera": {
+          "types": ["Matera DOC", "Primitivo di Matera"]
+        }
+      },
+      "Lazio": {
+        "Frascati": {
+          "types": ["Frascati", "Frascati Superiore", "Frascati Superiore Riserva"]
+        },
+        "Castelli Romani": {
+          "types": ["Marino", "Colli Albani", "Velletri"]
+        },
+        "Cesanese": {
+          "types": ["Cesanese del Piglio", "Cesanese di Affile"]
+        }
+      },
+      "Lombardy": {
+        "Franciacorta": {
+          "types": ["Franciacorta DOCG", "Franciacorta Satèn", "Franciacorta Rosé"]
+        },
+        "Valtellina": {
+          "types": ["Valtellina Superiore", "Sforzato di Valtellina", "Valtellina Rosso"]
+        },
+        "Oltrepò Pavese": {
+          "types": ["Oltrepò Pavese Pinot Nero", "Oltrepò Pavese Metodo Classico", "Oltrepò Pavese Barbera"]
+        }
+      },
+      "Umbria": {
+        "Sagrantino": {
+          "types": ["Sagrantino di Montefalco", "Sagrantino di Montefalco Passito"]
+        },
+        "Orvieto": {
+          "types": ["Orvieto Classico", "Orvieto Classico Superiore", "Orvieto Dolce"]
+        },
+        "Torgiano": {
+          "types": ["Torgiano Rosso", "Torgiano Rosso Riserva", "Torgiano Bianco"]
+        }
+      },
+      "Sardinia": {
+        "Cannonau": {
+          "types": ["Cannonau di Sardegna", "Cannonau di Sardegna Riserva"]
+        },
+        "Vermentino": {
+          "types": ["Vermentino di Sardegna", "Vermentino di Gallura"]
+        },
+        "Carignano": {
+          "types": ["Carignano del Sulcis", "Carignano del Sulcis Superiore"]
         }
       }
     },
@@ -224,6 +375,96 @@
         },
         "Tierra del Vino de Zamora": {
           "types": ["Tempranillo", "Garnacha", "Cabernet Sauvignon"]
+        }
+      },
+      "Alicante": {
+        "Marina Alta": {
+          "types": ["Moscatel de Alejandría", "Merseguera", "Monastrell"]
+        },
+        "Marina Baixa": {
+          "types": ["Alicante DOP", "Monastrell", "Garnacha Tintorera", "Tempranillo"]
+        }
+      },
+      "Almansa": {
+        "Central Region": {
+          "types": ["Almansa", "Garnacha Tintorera", "Monastrell", "Tempranillo"]
+        }
+      },
+      "Campo de Borja": {
+        "Central Region": {
+          "types": ["Campo de Borja", "Garnacha", "Tempranillo", "Cabernet Sauvignon", "Merlot"]
+        }
+      },
+      "Cebreros": {
+        "Central Region": {
+          "types": ["Cebreros", "Garnacha", "Albillo Real"]
+        }
+      },
+      "Catalonia": {
+        "Empordà": {
+          "types": ["Empordà", "Garnacha", "Cariñena", "Tempranillo"]
+        },
+        "Conca de Barberà": {
+          "types": ["Conca de Barberà", "Trepat", "Tempranillo", "Cabernet Sauvignon"]
+        },
+        "Costers del Segre": {
+          "types": ["Costers del Segre", "Tempranillo", "Garnacha", "Cabernet Sauvignon"]
+        },
+        "Tarragona": {
+          "types": ["Tarragona", "Garnacha", "Cariñena", "Tempranillo"]
+        }
+      },
+      "La Mancha": {
+        "Central Region": {
+          "types": ["La Mancha", "Tempranillo", "Airén", "Garnacha", "Monastrell"]
+        },
+        "Valdepeñas": {
+          "types": ["Valdepeñas", "Tempranillo", "Airén"]
+        }
+      },
+      "Mallorca": {
+        "Binissalem": {
+          "types": ["Binissalem", "Manto Negro", "Callet", "Chardonnay"]
+        },
+        "Pla i Llevant": {
+          "types": ["Pla i Llevant", "Manto Negro", "Callet", "Fogoneu"]
+        }
+      },
+      "Montsant": {
+        "Central Region": {
+          "types": ["Montsant", "Garnacha", "Cariñena", "Syrah", "Cabernet Sauvignon"]
+        }
+      },
+      "Navarra": {
+        "Baja Montaña": {
+          "types": ["Navarra Rosado", "Garnacha", "Tempranillo", "Chardonnay"]
+        },
+        "Ribera Alta": {
+          "types": ["Navarra", "Tempranillo", "Garnacha", "Graciano"]
+        },
+        "Ribera Baja": {
+          "types": ["Navarra", "Garnacha", "Tempranillo", "Moscatel"]
+        }
+      },
+      "Valdeorras": {
+        "Central Region": {
+          "types": ["Valdeorras", "Godello", "Mencía", "Doña Blanca"]
+        }
+      },
+      "Valencia": {
+        "Alto Turia": {
+          "types": ["Valencia", "Merseguera", "Planta Fina", "Tempranillo"]
+        },
+        "Moscatel de Valencia": {
+          "types": ["Moscatel de Valencia", "Moscatel Romano"]
+        },
+        "Clariano": {
+          "types": ["Valencia", "Monastrell", "Garnacha", "Tempranillo"]
+        }
+      },
+      "Yecla": {
+        "Central Region": {
+          "types": ["Yecla", "Monastrell", "Garnacha Tintorera", "Tempranillo", "Cabernet Sauvignon"]
         }
       }
     },

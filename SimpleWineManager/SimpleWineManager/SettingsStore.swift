@@ -23,6 +23,10 @@ enum SortField: String, Codable, CaseIterable {
     case type = "Type"
     case category = "Category"
     case price = "Price"
+    case quantity = "Quantity"
+    case bottleSize = "Bottle Size"
+    case readyToTrinkYear = "Drink from"
+    case bestBeforeYear = "Best before"
     
     var keyPath: String {
         switch self {
@@ -34,6 +38,10 @@ enum SortField: String, Codable, CaseIterable {
         case .type: return "type"
         case .category: return "category"
         case .price: return "price"
+        case .quantity: return "quantity"
+        case .bottleSize: return "bottleSize"
+        case .readyToTrinkYear: return "readyToTrinkYear"
+        case .bestBeforeYear: return "bestBeforeYear"
         }
     }
 }
@@ -51,6 +59,12 @@ class SettingsStore: ObservableObject {
         }
     }
     
+    @Published var importWithQuantity: Bool {
+        didSet {
+            UserDefaults.standard.set(importWithQuantity, forKey: "importWithQuantity")
+        }
+    }
+    
     @Published var sortOrders: [SortOrder] {
         didSet {
             if let encoded = try? JSONEncoder().encode(sortOrders) {
@@ -62,18 +76,6 @@ class SettingsStore: ObservableObject {
     @Published var selectedSortOrderId: UUID? {
         didSet {
             UserDefaults.standard.set(selectedSortOrderId?.uuidString, forKey: "selectedSortOrderId")
-        }
-    }
-    
-    @Published var printTitle: String {
-        didSet {
-            UserDefaults.standard.set(printTitle, forKey: "printTitle")
-        }
-    }
-    
-    @Published var printSubtitle: String {
-        didSet {
-            UserDefaults.standard.set(printSubtitle, forKey: "printSubtitle")
         }
     }
     
@@ -94,8 +96,7 @@ class SettingsStore: ObservableObject {
     init() {
         self.selectedCurrency = UserDefaults.standard.string(forKey: "selectedCurrency") ?? "EUR (€)"
         self.bottleSizeUnit = UserDefaults.standard.string(forKey: "bottleSizeUnit") ?? "ml"
-        self.printTitle = UserDefaults.standard.string(forKey: "printTitle") ?? "Winelist"
-        self.printSubtitle = UserDefaults.standard.string(forKey: "printSubtitle") ?? ""
+        self.importWithQuantity = UserDefaults.standard.bool(forKey: "importWithQuantity") // defaults to false
         
         // Load sort orders
         if let data = UserDefaults.standard.data(forKey: "sortOrders"),
