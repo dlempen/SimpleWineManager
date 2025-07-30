@@ -4,7 +4,12 @@ A privacy-focused iOS app for managing your personal wine collection. Store, org
 
 ![iOS](https://img.shields.io/badge/iOS-18.0+-blue.svg)
 ![Swift](https://img.shields.io/badge/Swift-5.0+-orange.svg)
+![AI Powered](https://img.shields.io/badge/Built%20with-GitHub%20Copilot-purple.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
+
+## 🤖 Built with AI
+
+**This entire application was developed using GitHub Copilot.** Every line of code, from the initial project structure to the final implementation, was generated through AI assistance. No traditional manual coding was performed by human developers - this project represents a complete demonstration of AI-powered software development capabilities.
 
 ## Features
 
@@ -120,11 +125,19 @@ Use the provided build scripts:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Support
+
+Need help or found a bug? Get support through:
+- **Issues & Bug Reports**: [GitHub Issues](https://github.com/dlempen/SimpleWineManager/issues)
+- **Full Support Guide**: [SUPPORT.md](SUPPORT.md)
+- **Feature Requests**: [Request a Feature](https://github.com/dlempen/SimpleWineManager/issues/new)
+
 ## Contact
 
 **Developer**: Dieter Lempen  
 **GitHub**: [@dlempen](https://github.com/dlempen)  
-**App Store**: Wine Manager (Coming Soon)
+**App Store**: Wine Manager (Coming Soon)  
+**Support**: [GitHub Issues](https://github.com/dlempen/SimpleWineManager/issues)
 
 ## Privacy Policy
 
