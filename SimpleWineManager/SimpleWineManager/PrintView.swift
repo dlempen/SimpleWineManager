@@ -229,7 +229,10 @@ struct PrintView: View {
     // PDF Export Function
     private func exportToPDF() {
         // Create PDF from HTML content
-        guard generateHTMLContent().data(using: .utf8) != nil else { return }
+        guard generateHTMLContent().data(using: .utf8) != nil else { 
+            print("Failed to generate HTML content")
+            return 
+        }
         
         let printFormatter = UIMarkupTextPrintFormatter(markupText: generateHTMLContent())
         
@@ -237,16 +240,28 @@ struct PrintView: View {
         let render = UIPrintPageRenderer()
         render.addPrintFormatter(printFormatter, startingAtPageAt: 0)
         
-        // Set page size (A4)
-        let page = CGRect(x: 0, y: 0, width: 595.2, height: 841.8) // A4 in points
-        render.setValue(page, forKey: "paperRect")
-        render.setValue(page, forKey: "printableRect")
+        // Set page size (A4) with proper margins
+        let pageSize = CGRect(x: 0, y: 0, width: 595.2, height: 841.8) // A4 in points
+        let printableRect = CGRect(x: 72, y: 72, width: 595.2 - 144, height: 841.8 - 144) // 1 inch margins
+        
+        render.setValue(pageSize, forKey: "paperRect")  
+        render.setValue(printableRect, forKey: "printableRect")
         
         // Create PDF data
         let pdfData = NSMutableData()
-        UIGraphicsBeginPDFContextToData(pdfData, page, nil)
+        UIGraphicsBeginPDFContextToData(pdfData, pageSize, nil)
         
-        for pageIndex in 0..<render.numberOfPages {
+        // Check if renderer has pages
+        let numberOfPages = render.numberOfPages
+        print("PDF will have \(numberOfPages) pages")
+        
+        if numberOfPages == 0 {
+            print("No pages to render")
+            UIGraphicsEndPDFContext()
+            return
+        }
+        
+        for pageIndex in 0..<numberOfPages {
             UIGraphicsBeginPDFPage()
             render.drawPage(at: pageIndex, in: UIGraphicsGetPDFContextBounds())
         }
@@ -260,31 +275,58 @@ struct PrintView: View {
         
         do {
             try pdfData.write(to: pdfPath)
+            print("PDF saved successfully to: \(pdfPath)")
             
-            // Present share sheet
+            // Present share sheet on main thread
             DispatchQueue.main.async {
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let window = windowScene.windows.first,
-                   let rootViewController = window.rootViewController {
-                    
-                    let activityViewController = UIActivityViewController(
-                        activityItems: [pdfPath],
-                        applicationActivities: nil
-                    )
-                    
-                    // Configure for iPad
-                    if let popover = activityViewController.popoverPresentationController {
-                        popover.sourceView = window
-                        popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
-                        popover.permittedArrowDirections = []
-                    }
-                    
-                    rootViewController.present(activityViewController, animated: true)
-                }
+                self.presentShareSheet(for: pdfPath)
             }
             
         } catch {
             print("Error creating PDF: \(error)")
+        }
+    }
+    
+    private func presentShareSheet(for pdfPath: URL) {
+        // Find the current view controller more reliably
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            print("Could not find window scene")
+            return
+        }
+        
+        // Get the topmost view controller
+        var topController = window.rootViewController
+        while let presentedController = topController?.presentedViewController {
+            topController = presentedController
+        }
+        
+        guard let viewController = topController else {
+            print("Could not find view controller")
+            return
+        }
+        
+        let activityViewController = UIActivityViewController(
+            activityItems: [pdfPath], 
+            applicationActivities: nil
+        )
+        
+        // Configure for iPad - use the PDF button as source
+        if let popover = activityViewController.popoverPresentationController {
+            // Try to find the toolbar button for better positioning
+            if let navigationController = viewController as? UINavigationController {
+                popover.sourceView = navigationController.navigationBar
+                popover.sourceRect = CGRect(x: navigationController.navigationBar.bounds.maxX - 60, y: navigationController.navigationBar.bounds.maxY, width: 1, height: 1)
+            } else {
+                popover.sourceView = viewController.view
+                popover.sourceRect = CGRect(x: viewController.view.bounds.maxX - 60, y: 100, width: 1, height: 1)
+            }
+            popover.permittedArrowDirections = [.up]
+        }
+        
+        print("Presenting share sheet")
+        viewController.present(activityViewController, animated: true) { 
+            print("Share sheet presented successfully")
         }
     }
     
