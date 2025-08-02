@@ -12,7 +12,7 @@
           "types": ["Pomerol"]
         },
         "Graves": {
-          "types": ["Graves", "Pessac-Léognan"]
+          "types": ["Graves", "Pessac-Léognan", "Sauternes", "Barsac", "Cérons"]
         }
       },
       "Burgundy": {
