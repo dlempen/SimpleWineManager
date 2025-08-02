@@ -651,6 +651,98 @@
           "types": ["Cabernet Franc", "Portugieser", "Kékfrankos"]
         }
       }
+    },
+    "Switzerland": {
+      "Valais": {
+        "Lower Valais": {
+          "types": ["Petite Arvine", "Humagne Rouge", "Cornalin", "Syrah", "Pinot Noir"]
+        },
+        "Central Valais": {
+          "types": ["Fendant", "Petite Arvine", "Humagne Blanc", "Malvoisie", "Pinot Noir"]
+        },
+        "Upper Valais": {
+          "types": ["Petite Arvine", "Rèze", "Humagne Rouge", "Pinot Noir", "Gamay"]
+        }
+      },
+      "Vaud": {
+        "La Côte": {
+          "types": ["Chasselas", "Pinot Noir", "Gamay", "Sauvignon Blanc"]
+        },
+        "Lavaux": {
+          "types": ["Chasselas", "Pinot Noir", "Gamay", "Chardonnay"]
+        },
+        "Chablis": {
+          "types": ["Chasselas", "Pinot Noir", "Gamay"]
+        },
+        "Bonvillars": {
+          "types": ["Chasselas", "Pinot Noir", "Chardonnay"]
+        },
+        "Côtes de l'Orbe": {
+          "types": ["Chasselas", "Pinot Noir", "Gamay"]
+        },
+        "Fully": {
+          "types": ["Chasselas", "Pinot Noir", "Gamay", "Syrah"]
+        }
+      },
+      "Geneva": {
+        "Mandement": {
+          "types": ["Chasselas", "Pinot Noir", "Gamay", "Chardonnay", "Sauvignon Blanc"]
+        },
+        "Entre Arve et Lac": {
+          "types": ["Chasselas", "Pinot Noir", "Gamay", "Chardonnay"]
+        },
+        "Entre Arve et Rhône": {
+          "types": ["Chasselas", "Pinot Noir", "Gamay", "Merlot"]
+        }
+      },
+      "German-speaking Switzerland": {
+        "Aargau": {
+          "types": ["Pinot Noir", "Müller-Thurgau", "Riesling-Silvaner", "Chardonnay"]
+        },
+        "Basel-Solothurn": {
+          "types": ["Pinot Noir", "Müller-Thurgau", "Riesling-Silvaner"]
+        },
+        "Graubünden": {
+          "types": ["Pinot Noir", "Müller-Thurgau", "Chardonnay", "Completer"]
+        },
+        "Central Switzerland": {
+          "types": ["Pinot Noir", "Müller-Thurgau", "Riesling-Silvaner"]
+        },
+        "Thurgau": {
+          "types": ["Pinot Noir", "Müller-Thurgau", "Riesling-Silvaner"]
+        },
+        "Schaffhausen": {
+          "types": ["Pinot Noir", "Müller-Thurgau", "Riesling-Silvaner"]
+        },
+        "Schwyz": {
+          "types": ["Pinot Noir", "Müller-Thurgau", "Riesling-Silvaner"]
+        },
+        "St. Gallen": {
+          "types": ["Pinot Noir", "Müller-Thurgau", "Riesling-Silvaner"]
+        },
+        "Zurich": {
+          "types": ["Pinot Noir", "Müller-Thurgau", "Riesling-Silvaner", "Chardonnay"]
+        }
+      },
+      "Three Lakes": {
+        "Lake Neuchâtel": {
+          "types": ["Chasselas", "Pinot Noir", "Chardonnay"]
+        },
+        "Lake Biel": {
+          "types": ["Chasselas", "Pinot Noir", "Chardonnay"]
+        },
+        "Vully": {
+          "types": ["Chasselas", "Pinot Noir", "Chardonnay"]
+        }
+      },
+      "Ticino": {
+        "Sopraceneri": {
+          "types": ["Merlot", "Cabernet Sauvignon", "Cabernet Franc", "Chardonnay"]
+        },
+        "Sottoceneri": {
+          "types": ["Merlot", "Cabernet Sauvignon", "Cabernet Franc", "Sauvignon Blanc"]
+        }
+      }
     }
   }
 }
