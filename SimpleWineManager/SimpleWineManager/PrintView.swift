@@ -352,6 +352,26 @@ struct PrintView: View {
                     /* Keep the entire section together */
                     keep-together: always !important;
                 }
+                .hierarchical-section {
+                    /* CRITICAL: Keep entire hierarchical sections (Title -> Subtitle -> Wine entries) together */
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    -webkit-column-break-inside: avoid !important;
+                    -webkit-page-break-inside: avoid !important;
+                    -moz-page-break-inside: avoid !important;
+                    -ms-page-break-inside: avoid !important;
+                    display: block !important;
+                    orphans: 20 !important;
+                    widows: 20 !important;
+                    margin-bottom: 8px !important;
+                    /* Prevent any breaking within hierarchical container */
+                    keep-together: always !important;
+                    -webkit-keep-together: always !important;
+                    -moz-keep-together: always !important;
+                    page-break-before: auto !important;
+                    page-break-after: auto !important;
+                    min-height: 50px !important;
+                }
                 .wine-row { 
                     margin-bottom: 6px; 
                     padding: 4px 0; 
@@ -620,6 +640,32 @@ struct PrintView: View {
                         orphans: 10 !important;
                         widows: 10 !important;
                     }
+                    
+                    /* CRITICAL: Hierarchical sections must move together as complete units */
+                    .hierarchical-section {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        -webkit-column-break-inside: avoid !important;
+                        -webkit-page-break-inside: avoid !important;
+                        -moz-page-break-inside: avoid !important;
+                        -ms-page-break-inside: avoid !important;
+                        page-break-after: auto !important;
+                        break-after: auto !important;
+                        /* Maximum protection for hierarchical title structures */
+                        display: block !important;
+                        overflow: visible !important;
+                        orphans: 25 !important;
+                        widows: 25 !important;
+                        margin-bottom: 6px !important;
+                        /* Strongest possible keep-together properties */
+                        keep-together: always !important;
+                        -webkit-keep-together: always !important;
+                        -moz-keep-together: always !important;
+                        min-height: 60px !important;
+                        /* Additional constraints for print environments */
+                        -webkit-region-break-inside: avoid !important;
+                        region-break-inside: avoid !important;
+                    }
                 }
             </style>
         </head>
@@ -637,17 +683,15 @@ struct PrintView: View {
         }
         html += "</div>"
         
-        // Process groups and create sections that keep titles with their wine entries
+        // Process groups and create hierarchical sections that move together as units
         let allGroups = groupedWines()
         var i = 0
-        var currentSectionHTML = ""
-        var hasSectionTitle = false
         
         while i < allGroups.count {
             let group = allGroups[i]
             
             if let wine = group.wine {
-                // Wine row for print
+                // Wine row for print - if we get here without a section, add wine directly
                 let vintage = wine.vintage ?? ""
                 let producer = wine.producer ?? "-"
                 let nameAndVintage = "\(wine.name ?? "Unknown") \(vintage)".trimmingCharacters(in: .whitespaces)
@@ -669,54 +713,72 @@ struct PrintView: View {
                     details.append(storageLocation)
                 }
                 
-                let wineHTML = """
+                html += """
                 <div class="wine-row">
                     <div class="wine-name">\(nameAndVintage), \(producer)</div>
                     <div class="wine-details">\(details.joined(separator: " • "))</div>
                 </div>
                 """
                 
-                if hasSectionTitle {
-                    // Add this wine to the current section
-                    currentSectionHTML += wineHTML
-                    
-                    // Check if the next item is another wine or if we're at the end
-                    let nextIndex = i + 1
-                    let isLastItem = nextIndex >= allGroups.count
-                    let nextIsTitle = !isLastItem && allGroups[nextIndex].wine == nil
-                    
-                    if isLastItem || nextIsTitle {
-                        // Close the current section and add it to HTML
-                        html += "<div class=\"title-with-content\">\(currentSectionHTML)</div>"
-                        currentSectionHTML = ""
-                        hasSectionTitle = false
-                    }
-                } else {
-                    // No section title, add wine directly
-                    html += wineHTML
-                }
-                
             } else if !group.title.isEmpty {
-                // Section title - clean the title to prevent any spacing issues
-                let cleanTitle = formatSectionTitle(group.title.trimmingCharacters(in: .whitespacesAndNewlines))
-                let cssClass = group.level == 0 ? "section-title-main" : "section-title-sub"
+                // We found a title - now we need to collect the entire hierarchical section
                 
-                // If we have an open section, close it first
-                if hasSectionTitle {
-                    html += "<div class=\"title-with-content\">\(currentSectionHTML)</div>"
+                // First, collect all consecutive titles at this position
+                var titleHTML = ""
+                while i < allGroups.count && allGroups[i].wine == nil && !allGroups[i].title.isEmpty {
+                    let currentGroup = allGroups[i]
+                    let cleanTitle = formatSectionTitle(currentGroup.title.trimmingCharacters(in: .whitespacesAndNewlines))
+                    let cssClass = currentGroup.level == 0 ? "section-title-main" : "section-title-sub"
+                    titleHTML += "<div class=\"\(cssClass)\">\(cleanTitle)</div>"
+                    i += 1
                 }
                 
-                // Start a new section
-                currentSectionHTML = "<div class=\"\(cssClass)\">\(cleanTitle)</div>"
-                hasSectionTitle = true
+                // Now collect all wine entries that belong to this hierarchical section
+                var wineHTML = ""
+                var wineCount = 0
+                while i < allGroups.count && allGroups[i].wine != nil {
+                    let wine = allGroups[i].wine!
+                    let vintage = wine.vintage ?? ""
+                    let producer = wine.producer ?? "-"
+                    let nameAndVintage = "\(wine.name ?? "Unknown") \(vintage)".trimmingCharacters(in: .whitespaces)
+                    
+                    var details: [String] = []
+                    details.append("Qty: \(wine.quantity)")
+                    
+                    if let size = wine.bottleSize, !size.isEmpty {
+                        details.append(settings.getDisplayBottleSize(size))
+                    }
+                    if let alcohol = wine.alcohol, !alcohol.isEmpty {
+                        details.append("\(alcohol)%")
+                    }
+                    if let price = wine.price, price != 0,
+                       !(settings.selectedSortOrder?.fields.contains(.price) ?? false) {
+                        details.append("\(price) \(settings.currencySymbol)")
+                    }
+                    if let storageLocation = wine.storageLocation, !storageLocation.isEmpty {
+                        details.append(storageLocation)
+                    }
+                    
+                    wineHTML += """
+                    <div class="wine-row">
+                        <div class="wine-name">\(nameAndVintage), \(producer)</div>
+                        <div class="wine-details">\(details.joined(separator: " • "))</div>
+                    </div>
+                    """
+                    wineCount += 1
+                    i += 1
+                }
+                
+                // Create a hierarchical section that must move together as a unit
+                if !titleHTML.isEmpty {
+                    html += "<div class=\"hierarchical-section\">\(titleHTML)\(wineHTML)</div>"
+                }
+                
+                // Don't increment i here since we already moved it in the loops
+                continue
             }
             
             i += 1
-        }
-        
-        // Close any remaining open section
-        if hasSectionTitle {
-            html += "<div class=\"title-with-content\">\(currentSectionHTML)</div>"
         }
         
         html += "</body></html>"
