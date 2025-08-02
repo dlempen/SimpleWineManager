@@ -192,27 +192,99 @@ struct PrintView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        // Trigger system print dialog
-                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                           windowScene.windows.first != nil {
-                            let printController = UIPrintInteractionController.shared
-                            let printInfo = UIPrintInfo.printInfo()
-                            printInfo.outputType = .general
-                            printInfo.jobName = "Wine Collection"
-                            printController.printInfo = printInfo
-                            
-                            // Create a print formatter for the view
-                            let printFormatter = UIMarkupTextPrintFormatter(markupText: generateHTMLContent())
-                            printController.printFormatter = printFormatter
-                            
-                            printController.present(animated: true, completionHandler: nil)
+                    HStack(spacing: 16) {
+                        // PDF Export Button
+                        Button(action: {
+                            exportToPDF()
+                        }) {
+                            Image(systemName: "doc.text")
                         }
-                    }) {
-                        Image(systemName: "printer")
+                        
+                        // Print Button
+                        Button(action: {
+                            // Trigger system print dialog
+                            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                               windowScene.windows.first != nil {
+                                let printController = UIPrintInteractionController.shared
+                                let printInfo = UIPrintInfo.printInfo()
+                                printInfo.outputType = .general
+                                printInfo.jobName = "Wine Collection"
+                                printController.printInfo = printInfo
+                                
+                                // Create a print formatter for the view
+                                let printFormatter = UIMarkupTextPrintFormatter(markupText: generateHTMLContent())
+                                printController.printFormatter = printFormatter
+                                
+                                printController.present(animated: true, completionHandler: nil)
+                            }
+                        }) {
+                            Image(systemName: "printer")
+                        }
                     }
                 }
             }
+        }
+    }
+    
+    // PDF Export Function
+    private func exportToPDF() {
+        // Create PDF from HTML content
+        guard generateHTMLContent().data(using: .utf8) != nil else { return }
+        
+        let printFormatter = UIMarkupTextPrintFormatter(markupText: generateHTMLContent())
+        
+        // Set up print page renderer
+        let render = UIPrintPageRenderer()
+        render.addPrintFormatter(printFormatter, startingAtPageAt: 0)
+        
+        // Set page size (A4)
+        let page = CGRect(x: 0, y: 0, width: 595.2, height: 841.8) // A4 in points
+        render.setValue(page, forKey: "paperRect")
+        render.setValue(page, forKey: "printableRect")
+        
+        // Create PDF data
+        let pdfData = NSMutableData()
+        UIGraphicsBeginPDFContextToData(pdfData, page, nil)
+        
+        for pageIndex in 0..<render.numberOfPages {
+            UIGraphicsBeginPDFPage()
+            render.drawPage(at: pageIndex, in: UIGraphicsGetPDFContextBounds())
+        }
+        
+        UIGraphicsEndPDFContext()
+        
+        // Create temporary file
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let fileName = "WineCollection_\(currentDateString.replacingOccurrences(of: ".", with: "_")).pdf"
+        let pdfPath = documentsPath.appendingPathComponent(fileName)
+        
+        do {
+            try pdfData.write(to: pdfPath)
+            
+            // Present share sheet
+            DispatchQueue.main.async {
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let rootViewController = window.rootViewController {
+                    
+                    let activityViewController = UIActivityViewController(
+                        activityItems: [pdfPath],
+                        applicationActivities: nil
+                    )
+                    
+                    // Configure for iPad
+                    if let popover = activityViewController.popoverPresentationController {
+                        popover.sourceView = window
+                        popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
+                        popover.permittedArrowDirections = []
+                    }
+                    
+                    rootViewController.present(activityViewController, animated: true)
+                }
+            }
+            
+        } catch {
+            print("Error creating PDF: \(error)")
         }
     }
     
