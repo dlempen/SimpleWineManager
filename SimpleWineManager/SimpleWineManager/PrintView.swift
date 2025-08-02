@@ -353,35 +353,70 @@ struct PrintView: View {
                     keep-together: always !important;
                 }
                 .hierarchical-section {
-                    /* CRITICAL: Keep entire hierarchical sections (Title -> Subtitle -> Wine entries) together */
-                    page-break-inside: avoid !important;
-                    break-inside: avoid !important;
-                    -webkit-column-break-inside: avoid !important;
-                    -webkit-page-break-inside: avoid !important;
-                    -moz-page-break-inside: avoid !important;
-                    -ms-page-break-inside: avoid !important;
+                    /* CRITICAL: Allow controlled breaking within sections */
+                    page-break-inside: auto !important;  
+                    break-inside: auto !important;
                     display: block !important;
-                    orphans: 20 !important;
-                    widows: 20 !important;
                     margin-bottom: 8px !important;
-                    /* Prevent any breaking within hierarchical container */
-                    keep-together: always !important;
-                    -webkit-keep-together: always !important;
-                    -moz-keep-together: always !important;
                     page-break-before: auto !important;
                     page-break-after: auto !important;
-                    min-height: 50px !important;
+                }
+                .protected-group {
+                    /* Title hierarchy + first wine MUST stay together */
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    page-break-after: auto !important;  /* Allow break after this group */
+                    keep-together: always !important;
+                    orphans: 5 !important;  /* Strong protection */
+                    widows: 3 !important;   
+                    display: block !important;
+                }
+                .title-hierarchy {
+                    /* Protect title hierarchy from breaking */
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    page-break-after: avoid !important;  /* Keep with first wine */
+                    keep-with-next: always !important;
+                    orphans: 20 !important; 
+                    widows: 15 !important;
+                    display: block !important;
+                }
+                .first-wine {
+                    /* First wine must stay with title hierarchy */
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    page-break-before: avoid !important;  /* Stay with titles */
+                    page-break-after: auto !important;    /* Allow break after */
+                    display: block !important;
+                }
+                .breakable-wines {
+                    /* Subsequent wines can break between each other */
+                    page-break-inside: auto !important;
+                    break-inside: auto !important;
+                    page-break-before: auto !important;
+                    page-break-after: auto !important;
+                    display: block !important;
+                }
+                .wine-list .wine-row:first-child {
+                    /* First wine entry in each section CANNOT be separated from title hierarchy */
+                    page-break-before: avoid !important;
+                    break-before: avoid !important;
+                    page-break-after: auto !important;   /* Allow break after first wine */
+                    orphans: 1 !important;
+                    widows: 1 !important;
                 }
                 .wine-row { 
                     margin-bottom: 6px; 
                     padding: 4px 0; 
-                    page-break-inside: avoid;
+                    page-break-inside: avoid;  /* Keep individual wine entries together */
                     break-inside: avoid;
+                    page-break-before: auto;   /* Allow page breaks before wine entries */
+                    page-break-after: auto;    /* Allow page breaks after wine entries */
                     display: block;
                     min-height: 3em;
                     position: relative;
                     line-height: 1.4;
-                    /* Keep wine entries together but allow text wrapping within */
+                    /* Keep individual wine entries together but allow breaks between them */
                 }
                 .wine-name { 
                     font-size: 14pt; 
@@ -517,16 +552,16 @@ struct PrintView: View {
                     }
                     
                     .wine-row {
-                        page-break-inside: avoid !important;
+                        page-break-inside: avoid !important;  /* Keep individual wine entries together */
                         break-inside: avoid !important;
-                        page-break-before: auto !important;
-                        page-break-after: auto !important;
+                        page-break-before: auto !important;   /* Allow page breaks before wine entries */
+                        page-break-after: auto !important;    /* Allow page breaks after wine entries */
                         margin-bottom: 4px !important;
                         padding: 3px 0 !important;
                         min-height: 36px !important;
                         position: relative !important;
                         overflow: visible !important;
-                        /* Ensure the entire wine row never breaks */
+                        /* Ensure individual wine entries don't break internally but allow breaks between them */
                         display: block !important;
                         line-height: 1.3 !important;
                     }
@@ -641,30 +676,93 @@ struct PrintView: View {
                         widows: 10 !important;
                     }
                     
-                    /* CRITICAL: Hierarchical sections must move together as complete units */
+                    /* CRITICAL: Hierarchical sections with controlled breaking */
                     .hierarchical-section {
+                        page-break-inside: auto !important;      /* Allow controlled breaking */
+                        break-inside: auto !important;
+                        display: block !important;
+                        margin-bottom: 6px !important;
+                        page-break-before: auto !important;
+                        page-break-after: auto !important;
+                    }
+                    
+                    /* Protected group: title hierarchy + first wine must stay together */
+                    .protected-group {
                         page-break-inside: avoid !important;
                         break-inside: avoid !important;
+                        page-break-after: auto !important;  /* Allow break after protected group */
+                        keep-together: always !important;
+                        orphans: 5 !important;  /* Strong protection */
+                        widows: 3 !important;
+                        display: block !important;
+                        /* Cross-browser support */
                         -webkit-column-break-inside: avoid !important;
                         -webkit-page-break-inside: avoid !important;
                         -moz-page-break-inside: avoid !important;
                         -ms-page-break-inside: avoid !important;
-                        page-break-after: auto !important;
-                        break-after: auto !important;
-                        /* Maximum protection for hierarchical title structures */
-                        display: block !important;
-                        overflow: visible !important;
-                        orphans: 25 !important;
-                        widows: 25 !important;
-                        margin-bottom: 6px !important;
-                        /* Strongest possible keep-together properties */
-                        keep-together: always !important;
-                        -webkit-keep-together: always !important;
-                        -moz-keep-together: always !important;
-                        min-height: 60px !important;
-                        /* Additional constraints for print environments */
                         -webkit-region-break-inside: avoid !important;
                         region-break-inside: avoid !important;
+                    }
+                    
+                    /* Title hierarchy protection */
+                    .title-hierarchy {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        page-break-after: avoid !important;  /* Must stay with first wine */
+                        break-after: avoid !important;
+                        keep-with-next: always !important;
+                        orphans: 20 !important;  /* Very strong protection */
+                        widows: 15 !important;
+                        display: block !important;
+                        /* Cross-browser support */
+                        -webkit-column-break-inside: avoid !important;
+                        -webkit-page-break-inside: avoid !important;
+                        -moz-page-break-inside: avoid !important;
+                        -ms-page-break-inside: avoid !important;
+                        -webkit-column-break-after: avoid !important;
+                        column-break-after: avoid !important;
+                        -moz-page-break-after: avoid !important;
+                        -webkit-region-break-after: avoid !important;
+                        region-break-after: avoid !important;
+                    }
+                    
+                    /* First wine must stay with title hierarchy */
+                    .first-wine {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        page-break-before: avoid !important;  /* Stay with titles */
+                        page-break-after: auto !important;    /* Allow break after */
+                        display: block !important;
+                        /* Cross-browser support */
+                        -webkit-column-break-before: avoid !important;
+                        column-break-before: avoid !important;
+                        -moz-page-break-before: avoid !important;
+                        -webkit-region-break-before: avoid !important;
+                        region-break-before: avoid !important;
+                    }
+                    
+                    /* Breakable wines can break freely between each other */
+                    .breakable-wines {
+                        page-break-inside: auto !important;   /* Allow breaks within */
+                        break-inside: auto !important;
+                        page-break-before: auto !important;
+                        page-break-after: auto !important;
+                        display: block !important;
+                        /* Enable breaking */
+                        -webkit-column-break-inside: auto !important;
+                        -webkit-page-break-inside: auto !important;
+                        -moz-page-break-inside: auto !important;
+                        -ms-page-break-inside: auto !important;
+                    }
+                    
+                    /* Wine rows in breakable section can break freely */
+                    .breakable-wines .wine-row {
+                        page-break-before: auto !important;
+                        page-break-after: auto !important;
+                        break-before: auto !important;
+                        break-after: auto !important;
+                        orphans: 1 !important;
+                        widows: 1 !important;
                     }
                 }
             </style>
@@ -734,8 +832,10 @@ struct PrintView: View {
                 }
                 
                 // Now collect all wine entries that belong to this hierarchical section
-                var wineHTML = ""
                 var wineCount = 0
+                var firstWineHTML = ""
+                var subsequentWinesHTML = ""
+                
                 while i < allGroups.count && allGroups[i].wine != nil {
                     let wine = allGroups[i].wine!
                     let vintage = wine.vintage ?? ""
@@ -759,19 +859,40 @@ struct PrintView: View {
                         details.append(storageLocation)
                     }
                     
-                    wineHTML += """
+                    let wineRowHTML = """
                     <div class="wine-row">
                         <div class="wine-name">\(nameAndVintage), \(producer)</div>
                         <div class="wine-details">\(details.joined(separator: " • "))</div>
                     </div>
                     """
+                    
+                    if wineCount == 0 {
+                        // First wine - must stay with title hierarchy
+                        firstWineHTML = wineRowHTML
+                    } else {
+                        // Subsequent wines - can break freely
+                        subsequentWinesHTML += wineRowHTML
+                    }
+                    
                     wineCount += 1
                     i += 1
                 }
                 
-                // Create a hierarchical section that must move together as a unit
+                // Create a hierarchical section with controlled breaking
                 if !titleHTML.isEmpty {
-                    html += "<div class=\"hierarchical-section\">\(titleHTML)\(wineHTML)</div>"
+                    html += "<div class=\"hierarchical-section\">"
+                    // Title hierarchy + first wine must stay together
+                    html += "<div class=\"protected-group\">"
+                    html += "<div class=\"title-hierarchy\">\(titleHTML)</div>"
+                    if !firstWineHTML.isEmpty {
+                        html += "<div class=\"first-wine\">\(firstWineHTML)</div>"
+                    }
+                    html += "</div>"
+                    // Subsequent wines can break between each other
+                    if !subsequentWinesHTML.isEmpty {
+                        html += "<div class=\"breakable-wines\">\(subsequentWinesHTML)</div>"
+                    }
+                    html += "</div>"
                 }
                 
                 // Don't increment i here since we already moved it in the loops
