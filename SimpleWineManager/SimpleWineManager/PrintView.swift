@@ -292,38 +292,42 @@ struct PrintView: View {
                     margin-top: 16px; 
                     margin-bottom: 8px; 
                     border-bottom: 1px solid #000; 
-                    /* Strong orphan prevention - keep with next content */
-                    page-break-after: avoid;
-                    page-break-inside: avoid;
-                    break-after: avoid;
-                    break-inside: avoid;
-                    orphans: 4;
-                    widows: 2;
+                    /* CRITICAL: Never allow titles to be the last line of a page */
+                    page-break-after: avoid !important;
+                    page-break-inside: avoid !important;
+                    break-after: avoid !important;
+                    break-inside: avoid !important;
+                    /* Force titles to always have content following them */
+                    orphans: 10 !important;
+                    widows: 10 !important;
                     line-height: 1.3;
-                    /* Allow text wrapping but keep title together */
                     word-wrap: break-word;
                     overflow-wrap: break-word;
-                    /* Ensure title stays with following content */
-                    keep-with-next: always;
+                    /* Absolutely ensure title cannot be alone at end of page */
+                    keep-with-next: always !important;
+                    -webkit-column-break-after: avoid !important;
+                    column-break-after: avoid !important;
                 }
                 .section-title-sub { 
                     font-size: 15pt; 
                     font-weight: 600; 
                     margin-top: 18px; 
                     margin-bottom: 8px; 
-                    /* Strong orphan prevention - keep with next content */
-                    page-break-after: avoid;
-                    page-break-inside: avoid;
-                    break-after: avoid;
-                    break-inside: avoid;
-                    orphans: 3;
-                    widows: 2;
+                    /* CRITICAL: Never allow subtitles to be the last line of a page */
+                    page-break-after: avoid !important;
+                    page-break-inside: avoid !important;
+                    break-after: avoid !important;
+                    break-inside: avoid !important;
+                    /* Force subtitles to always have content following them */
+                    orphans: 10 !important;
+                    widows: 10 !important;
                     line-height: 1.3;
-                    /* Allow text wrapping but keep title together */
                     word-wrap: break-word;
                     overflow-wrap: break-word;
-                    /* Ensure title stays with following content */
-                    keep-with-next: always;
+                    /* Absolutely ensure subtitle cannot be alone at end of page */
+                    keep-with-next: always !important;
+                    -webkit-column-break-after: avoid !important;
+                    column-break-after: avoid !important;
                 }
                 .section-group {
                     page-break-inside: avoid;
@@ -439,13 +443,14 @@ struct PrintView: View {
                     }
                     
                     .section-title-main {
+                        /* ABSOLUTE RULE: Main titles can NEVER be the last line of a page */
                         page-break-after: avoid !important;
                         break-after: avoid !important;
                         page-break-inside: avoid !important;
                         break-inside: avoid !important;
-                        /* Force title to stay with following content */
-                        orphans: 5 !important;
-                        widows: 3 !important;
+                        /* Maximum orphan protection - force multiple lines to follow */
+                        orphans: 15 !important;
+                        widows: 10 !important;
                         margin-top: 14px !important;
                         margin-bottom: 6px !important;
                         padding-bottom: 2px !important;
@@ -454,19 +459,24 @@ struct PrintView: View {
                         overflow-wrap: break-word !important;
                         font-size: 16pt !important;
                         line-height: 1.2 !important;
-                        /* Additional properties to ensure title sticks with content */
+                        /* Strongest possible keep-with-next properties */
                         keep-with-next: always !important;
                         -webkit-column-break-after: avoid !important;
                         column-break-after: avoid !important;
+                        /* Additional properties to force page break before if needed */
+                        -webkit-region-break-after: avoid !important;
+                        region-break-after: avoid !important;
                     }
                     
                     .section-title-sub {
+                        /* ABSOLUTE RULE: Subtitles can NEVER be the last line of a page */
                         page-break-after: avoid !important;
                         break-after: avoid !important;
                         page-break-inside: avoid !important;
                         break-inside: avoid !important;
-                        orphans: 3 !important;
-                        widows: 2 !important;
+                        /* Maximum orphan protection - force multiple lines to follow */
+                        orphans: 15 !important;
+                        widows: 10 !important;
                         margin-top: 16px !important;
                         margin-bottom: 8px !important;
                         min-height: 20px !important;
@@ -474,6 +484,13 @@ struct PrintView: View {
                         overflow-wrap: break-word !important;
                         font-size: 14pt !important;
                         line-height: 1.2 !important;
+                        /* Strongest possible keep-with-next properties */
+                        keep-with-next: always !important;
+                        -webkit-column-break-after: avoid !important;
+                        column-break-after: avoid !important;
+                        /* Additional properties to force page break before if needed */
+                        -webkit-region-break-after: avoid !important;
+                        region-break-after: avoid !important;
                         /* Normalize any special character spacing */
                         text-rendering: optimizeLegibility !important;
                         font-kerning: normal !important;
@@ -553,6 +570,55 @@ struct PrintView: View {
                         hyphens: auto !important;
                         -webkit-hyphens: auto !important;
                         -ms-hyphens: auto !important;
+                    }
+                    
+                    /* STRONGEST ORPHAN PREVENTION RULES */
+                    /* These rules ensure no title/subtitle can ever be at the end of a page */
+                    .section-title-main,
+                    .section-title-sub {
+                        /* Force minimum 5 lines to follow any title/subtitle */
+                        orphans: 20 !important;
+                        widows: 20 !important;
+                        /* Multiple fallback mechanisms for different browsers */
+                        page-break-after: avoid !important;
+                        break-after: avoid !important;
+                        -webkit-column-break-after: avoid !important;
+                        column-break-after: avoid !important;
+                        -moz-page-break-after: avoid !important;
+                        -webkit-region-break-after: avoid !important;
+                        region-break-after: avoid !important;
+                        /* Absolutely force them to stay with next element */
+                        keep-with-next: always !important;
+                        -webkit-keep-with-next: always !important;
+                        /* Additional display properties to strengthen the constraint */
+                        display: block !important;
+                        float: none !important;
+                        clear: both !important;
+                    }
+                    
+                    /* Ensure wine rows immediately following titles stay with them */
+                    .section-title-main + .wine-row,
+                    .section-title-sub + .wine-row {
+                        page-break-before: avoid !important;
+                        break-before: avoid !important;
+                        margin-top: 0 !important;
+                        padding-top: 2px !important;
+                        /* These wine rows cannot be separated from their titles */
+                        orphans: 1 !important;
+                        widows: 1 !important;
+                    }
+                    
+                    /* Title containers must stay together with their content */
+                    .title-with-content {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        page-break-after: auto !important;
+                        break-after: auto !important;
+                        /* Ensure the entire container is treated as a unit */
+                        display: block !important;
+                        overflow: visible !important;
+                        orphans: 10 !important;
+                        widows: 10 !important;
                     }
                 }
             </style>
