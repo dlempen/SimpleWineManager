@@ -24,6 +24,8 @@ extension Wine {
     @NSManaged public var readyToTrinkYear: String?
     @NSManaged public var bestBeforeYear: String?
     @NSManaged public var storageLocation: String?
+    @NSManaged public var remarks: String?
+    @NSManaged public var wineRating: String?
 }
 
 extension Wine: Identifiable { }

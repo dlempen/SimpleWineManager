@@ -2,17 +2,26 @@
   "wineRegions": {
     "France": {
       "Bordeaux": {
-        "Médoc": {
-          "types": ["Médoc", "Haut-Médoc", "Margaux", "Pauillac", "Saint-Julien", "Saint-Estèphe"]
+        "Libournais": {
+          "types": ["Fronsac", "Canon Fronsac", "Lalande-de-Pomerol", "Lussac - St. Emilion", "Montagen - St. Emilion", "St-Georges - St. Emilion", "Puisseguin - St. Emilion", "Saint-Emillion", "Saint-Emillion Grand Cru", "Pomerol", "Francs - Côte de Bordeaux", "Castillon -Côte de Bordeaux"]
         },
-        "Saint-Émilion": {
-          "types": ["Saint-Émilion", "Saint-Émilion Grand Cru"]
+        "Bourg": {
+          "types": ["Côte de Bourg"]
         },
-        "Pomerol": {
-          "types": ["Pomerol"]
+        "Blaye": {
+          "types": ["Côte de Bordeaux", "Côte de Blaye"]
         },
         "Graves": {
-          "types": ["Graves", "Pessac-Léognan", "Sauternes", "Barsac", "Cérons"]
+          "types": ["Graves", "Graves Supérieures", "Cérons", "Barsac", "Sauternes", "Pessac-Léognan", "Premières Côte de Bordeaux"]
+        },
+        "Entre-Deux-Mers": {
+          "types": ["Entre-Deux-Mers", "Graves de Vayres", "Sainte-Foy Bordeaux", "Bordeaux Haut-Benauge", "Cadillac", "Cadillac - Côte de Bordeaux", "Premières Côte de Bordeaux"]
+        },
+        "Langon": {
+          "types": ["Bordeaux", "Bordeaux Supérieur"]
+        },
+        "Médoc": {
+          "types": ["St-Estèphe", "Pauillac", "St. Julien", "Listrac-Médoc", "Margaux", "Moulis", "Haut-Médoc"]
         }
       },
       "Burgundy": {

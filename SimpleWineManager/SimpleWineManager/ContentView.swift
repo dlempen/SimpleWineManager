@@ -68,10 +68,12 @@ struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var viewModel: WineListViewModel
     @StateObject private var settings = SettingsStore()
+    @StateObject private var historyService: WineHistoryService
     @State private var showingAddWine = false
     @State private var showingSettings = false
     @State private var showingPrintView = false
     @State private var showingAdvancedSearch = false
+    @State private var showingHistory = false
     
     // Use standard @FetchRequest instead of a State variable
     @FetchRequest private var wines: FetchedResults<Wine>
@@ -79,6 +81,7 @@ struct ContentView: View {
     init(context: NSManagedObjectContext? = nil) {
         let context = context ?? PersistenceController.shared.container.viewContext
         _viewModel = StateObject(wrappedValue: WineListViewModel(context: context))
+        _historyService = StateObject(wrappedValue: WineHistoryService(context: context))
         
         // Initialize the FetchRequest with default sorting
         _wines = FetchRequest(
@@ -195,6 +198,8 @@ struct ContentView: View {
                 let readyToTrinkYear = wine.readyToTrinkYear?.lowercased() ?? ""
                 let bestBeforeYear = wine.bestBeforeYear?.lowercased() ?? ""
                 let storageLocation = wine.storageLocation?.lowercased() ?? ""
+                let remarks = wine.remarks?.lowercased() ?? ""
+                let wineRating = wine.wineRating?.lowercased() ?? ""
                 let price = wine.price?.stringValue ?? ""
                 
                 return name.contains(lowercasedSearch) ||
@@ -210,6 +215,8 @@ struct ContentView: View {
                        readyToTrinkYear.contains(lowercasedSearch) ||
                        bestBeforeYear.contains(lowercasedSearch) ||
                        storageLocation.contains(lowercasedSearch) ||
+                       remarks.contains(lowercasedSearch) ||
+                       wineRating.contains(lowercasedSearch) ||
                        price.contains(lowercasedSearch)
             }
         }
@@ -531,6 +538,18 @@ struct ContentView: View {
                                 WineRowView(wine: wine)
                             }
                             .id(wineId)
+                            .swipeActions(edge: .leading) {
+                                if wine.quantity > 0 {
+                                    Button("Consume") {
+                                        // Add haptic feedback
+                                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                                        impactFeedback.impactOccurred()
+                                        
+                                        consumeWine(wine)
+                                    }
+                                    .tint(.green)
+                                }
+                            }
                             .swipeActions(edge: .trailing) {
                                 Button("Delete", role: .destructive) {
                                     deleteWine(wine)
@@ -591,6 +610,11 @@ struct ContentView: View {
                         }) {
                             Image(systemName: "printer")
                         }
+                        Button(action: {
+                            showingHistory = true
+                        }) {
+                            Image(systemName: "clock")
+                        }
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -603,7 +627,7 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingAddWine) {
                 NavigationStack {
-                    AddWineView()
+                    AddWineView(historyService: historyService)
                         .environmentObject(settings)
                 }
             }
@@ -617,6 +641,9 @@ struct ContentView: View {
             .sheet(isPresented: $showingAdvancedSearch) {
                 AdvancedSearchView(criteria: viewModel.advancedSearchCriteria)
                     .environmentObject(settings)
+            }
+            .sheet(isPresented: $showingHistory) {
+                WineHistoryView(historyService: historyService)
             }
         }
         .environmentObject(settings)
@@ -638,6 +665,9 @@ struct ContentView: View {
 
     private func deleteWine(_ wine: Wine) {
         withAnimation {
+            // Log the wine deletion to history before deleting
+            historyService.logWineDeleted(wine: wine)
+            
             viewContext.delete(wine)
             try? viewContext.save()
             viewModel.refreshData()
@@ -649,6 +679,9 @@ struct ContentView: View {
             let groupedItems = groupedWines()
             for index in offsets {
                 if let wine = groupedItems[index].wine {
+                    // Log the wine deletion to history before deleting
+                    historyService.logWineDeleted(wine: wine)
+                    
                     viewContext.delete(wine)
                 }
             }
@@ -657,6 +690,32 @@ struct ContentView: View {
         }
     }
     
+    private func consumeWine(_ wine: Wine) {
+        // Don't consume if there's nothing to consume
+        guard wine.quantity > 0 else { return }
+        
+        let oldQuantity = wine.quantity
+        wine.quantity -= 1
+        
+        do {
+            try viewContext.save()
+            
+            // Log the wine consumption to history
+            historyService.logWineConsumed(wine: wine, quantityConsumed: 1)
+            
+            // Force an update to the object
+            viewContext.refresh(wine, mergeChanges: true)
+            // Make sure the changes are processed immediately
+            wine.objectWillChange.send()
+            
+            // Refresh the view model
+            viewModel.refreshData()
+        } catch {
+            print("Error saving context: \(error)")
+            wine.quantity = oldQuantity
+        }
+    }
+
     private func shouldShowSeparatorAfterTitle(at index: Int, in groups: [(level: Int, title: String, wine: Wine?)]) -> Bool {
         // Check if the next item is a wine
         if index < groups.count - 1 {

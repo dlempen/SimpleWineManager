@@ -15,6 +15,11 @@ struct SimpleWineManagerApp: App {
         WindowGroup {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .onAppear {
+                    // Perform one-time migration for existing history entries
+                    let historyService = WineHistoryService(context: persistenceController.container.viewContext)
+                    historyService.migrateHistoryEntriesToIncludeRunningTotals()
+                }
         }
     }
 }
