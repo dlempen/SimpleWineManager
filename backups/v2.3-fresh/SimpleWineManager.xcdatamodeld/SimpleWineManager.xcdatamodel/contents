@@ -19,22 +19,5 @@
         <attribute name="readyToTrinkYear" optional="YES" attributeType="String"/>
         <attribute name="bestBeforeYear" optional="YES" attributeType="String"/>
         <attribute name="storageLocation" optional="YES" attributeType="String"/>
-        <attribute name="remarks" optional="YES" attributeType="String"/>
-        <attribute name="wineRating" optional="YES" attributeType="String"/>
-    </entity>
-    <entity name="WineHistory" representedClassName="WineHistory" syncable="YES">
-        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
-        <attribute name="action" optional="YES" attributeType="String"/>
-        <attribute name="changeDetails" optional="YES" attributeType="String"/>
-        <attribute name="wineSnapshot" optional="YES" attributeType="String"/>
-        <attribute name="quantityChange" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="priceAtTime" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
-        <attribute name="wineName" optional="YES" attributeType="String"/>
-        <attribute name="wineProducer" optional="YES" attributeType="String"/>
-        <attribute name="wineVintage" optional="YES" attributeType="String"/>
-        <attribute name="wineId" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
-        <attribute name="totalQuantityAtTime" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="totalValueAtTime" optional="YES" attributeType="Decimal" defaultValueString="0.0"/>
     </entity>
 </model>

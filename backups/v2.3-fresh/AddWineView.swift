@@ -8,7 +8,6 @@ struct AddWineView: View {
     @EnvironmentObject var settings: SettingsStore
     @StateObject private var wineRegions = WineRegions()
     @StateObject private var suggestionProvider = SuggestionProvider(context: PersistenceController.shared.container.viewContext)
-    @ObservedObject var historyService: WineHistoryService
     
     let wineCategories = ["Red", "White", "Rosé", "Sparkling", "Dessert", "Port"]
 
@@ -27,8 +26,6 @@ struct AddWineView: View {
     @State private var readyToTrinkYear = ""
     @State private var bestBeforeYear = ""
     @State private var storageLocation = ""
-    @State private var remarks = ""
-    @State private var wineRating = ""
     
     @State private var selectedCountry = ""
     @State private var selectedRegion = ""
@@ -37,9 +34,7 @@ struct AddWineView: View {
     
     @State private var updatingFromSelection = false
     
-    init(historyService: WineHistoryService, copyFrom wine: Wine? = nil) {
-        self.historyService = historyService
-        
+    init(copyFrom wine: Wine? = nil) {
         // When copying a wine's data, initialize all @State properties
         _name = State(initialValue: wine?.name ?? "")
         _producer = State(initialValue: wine?.producer ?? "")
@@ -63,8 +58,6 @@ struct AddWineView: View {
         _readyToTrinkYear = State(initialValue: wine?.readyToTrinkYear ?? "")
         _bestBeforeYear = State(initialValue: wine?.bestBeforeYear ?? "")
         _storageLocation = State(initialValue: wine?.storageLocation ?? "")
-        _remarks = State(initialValue: wine?.remarks ?? "")
-        _wineRating = State(initialValue: wine?.wineRating ?? "")
         
         // When copying a wine, we don't copy the images
         _frontImage = State(initialValue: nil)
@@ -185,26 +178,6 @@ struct AddWineView: View {
                     fieldType: .storageLocation,
                     keyboardType: .default
                 )
-                
-                HStack {
-                    Text("Rating")
-                        .foregroundColor(.secondary)
-                        .frame(width: 100, alignment: .leading)
-                    TextField("Wine Rating", text: $wineRating)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
-                
-                VStack(alignment: .leading) {
-                    HStack {
-                        Text("Remarks")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        Spacer()
-                    }
-                    TextField("Comments, tasting notes, etc.", text: $remarks, axis: .vertical)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .lineLimit(3...6)
-                }
             }
 
             Section(header: Text("Classification")) {
@@ -444,8 +417,6 @@ struct AddWineView: View {
         newWine.readyToTrinkYear = readyToTrinkYear
         newWine.bestBeforeYear = bestBeforeYear
         newWine.storageLocation = storageLocation
-        newWine.remarks = remarks
-        newWine.wineRating = wineRating
         
         if let frontImage = frontImage, let data = frontImage.jpegData(compressionQuality: 0.8) {
             newWine.frontImageData = data
@@ -454,9 +425,6 @@ struct AddWineView: View {
         if let backImage = backImage, let data = backImage.jpegData(compressionQuality: 0.8) {
             newWine.backImageData = data
         }
-        
-        // Log the wine addition to history
-        historyService.logWineAdded(wine: newWine)
     }
     
     private func areAllFieldsEmpty() -> Bool {
@@ -480,9 +448,7 @@ struct AddWineView: View {
                bottleSizeIsDefault &&
                readyToTrinkYear.isEmpty &&
                bestBeforeYear.isEmpty &&
-               storageLocation.isEmpty &&
-               remarks.isEmpty &&
-               wineRating.isEmpty
+               storageLocation.isEmpty
     }
 
     private func extractWineInfo(from image: UIImage) {

@@ -5,6 +5,7 @@ A privacy-focused iOS app for managing your personal wine collection. Store, org
 ![iOS](https://img.shields.io/badge/iOS-18.0+-blue.svg)
 ![Swift](https://img.shields.io/badge/Swift-5.0+-orange.svg)
 ![AI Powered](https://img.shields.io/badge/Built%20with-GitHub%20Copilot-purple.svg)
+![Version](https://img.shields.io/badge/Version-2.4%20Dev-orange.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## 🤖 Built with AI
@@ -105,10 +106,10 @@ SimpleWineManager/
 ## Development
 
 ### Version History
-- **v2.5** (Current): Enhanced sorting, improved wine regions, better autocomplete
-- **v2.4**: Added print functionality and export/import features
-- **v2.3**: Improved UI consistency and search capabilities
+- **v2.4** (In Development): New features and improvements coming soon
+- **v2.3** (Current - App Store): Improved UI consistency and search capabilities
 - **v2.2**: Enhanced wine classification system
+- **v2.1**: Core functionality and data model
 - **v2.1**: Core functionality and data model
 
 ### Contributing

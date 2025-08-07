@@ -7,7 +7,6 @@ struct WineDetailView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settings: SettingsStore
-    @StateObject private var historyService = WineHistoryService(context: PersistenceController.shared.container.viewContext)
     
     let wineCategories = ["Red", "White", "Rosé", "Sparkling", "Dessert", "Port"]
     
@@ -35,8 +34,6 @@ struct WineDetailView: View {
     @State private var editReadyToTrinkYear: String = ""
     @State private var editBestBeforeYear: String = ""
     @State private var editStorageLocation: String = ""
-    @State private var editRemarks: String = ""
-    @State private var editWineRating: String = ""
     @State private var editFrontImage: UIImage?
     @State private var editBackImage: UIImage?
     @State private var isShowingFrontCamera = false
@@ -126,7 +123,7 @@ struct WineDetailView: View {
         }
         .sheet(isPresented: $isShowingCopySheet) {
             NavigationView {
-                AddWineView(historyService: historyService, copyFrom: wine)
+                AddWineView(copyFrom: wine)
                     .environment(\.managedObjectContext, viewContext)
                     .environmentObject(settings)
             }
@@ -274,29 +271,6 @@ struct WineDetailView: View {
                     fieldType: .storageLocation,
                     keyboardType: .default
                 )
-                
-                HStack {
-                    Text("Rating")
-                        .foregroundColor(.secondary)
-                        .frame(width: 100, alignment: .leading)
-                    TextField("Wine Rating", text: $editWineRating)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Remarks")
-                            .foregroundColor(.secondary)
-                            .frame(width: 100, alignment: .leading)
-                        Spacer()
-                    }
-                    TextEditor(text: $editRemarks)
-                        .frame(minHeight: 60, maxHeight: 120)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color(.systemGray4), lineWidth: 1)
-                        )
-                }
             }
 
             Section(header: Text("Classification")) {
@@ -535,18 +509,6 @@ struct WineDetailView: View {
                 DetailRow(label: "Ready to drink", value: wine.readyToTrinkYear ?? "")
                 DetailRow(label: "Best before", value: wine.bestBeforeYear ?? "")
                 DetailRow(label: "Storage", value: wine.storageLocation ?? "")
-                DetailRow(label: "Rating", value: wine.wineRating ?? "")
-                if let remarks = wine.remarks, !remarks.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Remarks")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                        }
-                        Text(remarks)
-                            .bold()
-                    }
-                }
             }
             
             Divider()
@@ -607,8 +569,6 @@ struct WineDetailView: View {
         editReadyToTrinkYear = wine.readyToTrinkYear ?? ""
         editBestBeforeYear = wine.bestBeforeYear ?? ""
         editStorageLocation = wine.storageLocation ?? ""
-        editRemarks = wine.remarks ?? ""
-        editWineRating = wine.wineRating ?? ""
         
         if let frontData = wine.frontImageData {
             editFrontImage = UIImage(data: frontData)
@@ -650,8 +610,6 @@ struct WineDetailView: View {
         wine.readyToTrinkYear = editReadyToTrinkYear
         wine.bestBeforeYear = editBestBeforeYear
         wine.storageLocation = editStorageLocation
-        wine.remarks = editRemarks
-        wine.wineRating = editWineRating
         
         // Handle front image updates and deletions
         if let frontImage = editFrontImage {
@@ -670,9 +628,6 @@ struct WineDetailView: View {
         do {
             // Save the changes
             try viewContext.save()
-            
-            // Log the wine edit to history
-            historyService.logWineEdited(wine: wine)
             
             // Ensure the wine object is fully updated
             viewContext.refresh(wine, mergeChanges: true)
@@ -777,15 +732,10 @@ struct WineDetailView: View {
         // Don't consume if there's nothing to consume
         guard wine.quantity > 0 && consumeAmount > 0 else { return }
         
-        let oldQuantity = wine.quantity
         wine.quantity -= Int16(consumeAmount)
         
         do {
             try viewContext.save()
-            
-            // Log the wine consumption to history
-            historyService.logWineConsumed(wine: wine, quantityConsumed: consumeAmount)
-            
             // Force an update to the object
             viewContext.refresh(wine, mergeChanges: true)
             // Make sure the changes are processed immediately
@@ -794,7 +744,7 @@ struct WineDetailView: View {
             dismiss()
         } catch {
             print("Error saving context: \(error)")
-            wine.quantity = oldQuantity
+            wine.quantity += Int16(consumeAmount)
         }
     }
 }

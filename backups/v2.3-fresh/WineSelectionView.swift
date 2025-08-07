@@ -40,8 +40,6 @@ struct WineSelectionView: View {
                 let readyToTrinkYear = wine.readyToTrinkYear?.lowercased() ?? ""
                 let bestBeforeYear = wine.bestBeforeYear?.lowercased() ?? ""
                 let storageLocation = wine.storageLocation?.lowercased() ?? ""
-                let remarks = wine.remarks?.lowercased() ?? ""
-                let wineRating = wine.wineRating?.lowercased() ?? ""
                 let price = wine.price?.stringValue ?? ""
                 
                 return name.contains(lowercasedSearch) ||
@@ -57,8 +55,6 @@ struct WineSelectionView: View {
                        readyToTrinkYear.contains(lowercasedSearch) ||
                        bestBeforeYear.contains(lowercasedSearch) ||
                        storageLocation.contains(lowercasedSearch) ||
-                       remarks.contains(lowercasedSearch) ||
-                       wineRating.contains(lowercasedSearch) ||
                        price.contains(lowercasedSearch)
             }
         }

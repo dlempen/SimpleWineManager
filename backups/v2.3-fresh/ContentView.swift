@@ -7,14 +7,11 @@
 
 import SwiftUI
 import CoreData
-import Combine
 
 class WineListViewModel: ObservableObject {
     private var viewContext: NSManagedObjectContext
     @Published private(set) var lastRefresh = Date()
     @Published var searchText = ""
-    @Published var advancedSearchCriteria = AdvancedSearchCriteria()
-    private var cancellables = Set<AnyCancellable>()
     
     var wines: [Wine] {
         let request: NSFetchRequest<Wine> = Wine.fetchRequest()
@@ -41,15 +38,6 @@ class WineListViewModel: ObservableObject {
             selector: #selector(refreshData),
             name: NSNotification.Name("WineDataDidChange"),
             object: nil)
-        
-        // Listen for changes in advanced search criteria to trigger UI refresh
-        advancedSearchCriteria.objectWillChange
-            .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    self?.objectWillChange.send()
-                }
-            }
-            .store(in: &cancellables)
     }
     
     @objc func refreshData() {
@@ -60,7 +48,6 @@ class WineListViewModel: ObservableObject {
     
     deinit {
         NotificationCenter.default.removeObserver(self)
-        cancellables.removeAll()
     }
 }
 
@@ -68,12 +55,9 @@ struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var viewModel: WineListViewModel
     @StateObject private var settings = SettingsStore()
-    @StateObject private var historyService: WineHistoryService
     @State private var showingAddWine = false
     @State private var showingSettings = false
     @State private var showingPrintView = false
-    @State private var showingAdvancedSearch = false
-    @State private var showingHistory = false
     
     // Use standard @FetchRequest instead of a State variable
     @FetchRequest private var wines: FetchedResults<Wine>
@@ -81,7 +65,6 @@ struct ContentView: View {
     init(context: NSManagedObjectContext? = nil) {
         let context = context ?? PersistenceController.shared.container.viewContext
         _viewModel = StateObject(wrappedValue: WineListViewModel(context: context))
-        _historyService = StateObject(wrappedValue: WineHistoryService(context: context))
         
         // Initialize the FetchRequest with default sorting
         _wines = FetchRequest(
@@ -176,247 +159,41 @@ struct ContentView: View {
     }
     
     var filteredWines: [Wine] {
-        let wineArray = Array(wines)
-        
-        // Apply basic search text filter first
-        let basicFiltered: [Wine]
         if viewModel.searchText.isEmpty {
-            basicFiltered = wineArray
-        } else {
-            let lowercasedSearch = viewModel.searchText.lowercased()
-            basicFiltered = wineArray.filter { wine in
-                let name = wine.name?.lowercased() ?? ""
-                let producer = wine.producer?.lowercased() ?? ""
-                let vintage = wine.vintage?.lowercased() ?? ""
-                let alcohol = wine.alcohol?.lowercased() ?? ""
-                let category = wine.category?.lowercased() ?? ""
-                let country = wine.country?.lowercased() ?? ""
-                let region = wine.region?.lowercased() ?? ""
-                let subregion = wine.subregion?.lowercased() ?? ""
-                let type = wine.type?.lowercased() ?? ""
-                let bottleSize = wine.bottleSize?.lowercased() ?? ""
-                let readyToTrinkYear = wine.readyToTrinkYear?.lowercased() ?? ""
-                let bestBeforeYear = wine.bestBeforeYear?.lowercased() ?? ""
-                let storageLocation = wine.storageLocation?.lowercased() ?? ""
-                let remarks = wine.remarks?.lowercased() ?? ""
-                let wineRating = wine.wineRating?.lowercased() ?? ""
-                let price = wine.price?.stringValue ?? ""
-                
-                return name.contains(lowercasedSearch) ||
-                       producer.contains(lowercasedSearch) ||
-                       vintage.contains(lowercasedSearch) ||
-                       alcohol.contains(lowercasedSearch) ||
-                       category.contains(lowercasedSearch) ||
-                       country.contains(lowercasedSearch) ||
-                       region.contains(lowercasedSearch) ||
-                       subregion.contains(lowercasedSearch) ||
-                       type.contains(lowercasedSearch) ||
-                       bottleSize.contains(lowercasedSearch) ||
-                       readyToTrinkYear.contains(lowercasedSearch) ||
-                       bestBeforeYear.contains(lowercasedSearch) ||
-                       storageLocation.contains(lowercasedSearch) ||
-                       remarks.contains(lowercasedSearch) ||
-                       wineRating.contains(lowercasedSearch) ||
-                       price.contains(lowercasedSearch)
-            }
+            return Array(wines)
         }
         
-        // Apply advanced search criteria
-        let criteria = viewModel.advancedSearchCriteria
-        if !criteria.hasActiveCriteria() {
-            return basicFiltered
-        }
-        
-        return basicFiltered.filter { wine in
-            // String field filters (case-insensitive contains)
-            if !criteria.name.isEmpty {
-                let wineName = wine.name?.lowercased() ?? ""
-                if !wineName.contains(criteria.name.lowercased()) {
-                    return false
-                }
-            }
+        let lowercasedSearch = viewModel.searchText.lowercased()
+        return wines.filter { wine in
+            let name = wine.name?.lowercased() ?? ""
+            let producer = wine.producer?.lowercased() ?? ""
+            let vintage = wine.vintage?.lowercased() ?? ""
+            let alcohol = wine.alcohol?.lowercased() ?? ""
+            let category = wine.category?.lowercased() ?? ""
+            let country = wine.country?.lowercased() ?? ""
+            let region = wine.region?.lowercased() ?? ""
+            let subregion = wine.subregion?.lowercased() ?? ""
+            let type = wine.type?.lowercased() ?? ""
+            let bottleSize = wine.bottleSize?.lowercased() ?? ""
+            let readyToTrinkYear = wine.readyToTrinkYear?.lowercased() ?? ""
+            let bestBeforeYear = wine.bestBeforeYear?.lowercased() ?? ""
+            let storageLocation = wine.storageLocation?.lowercased() ?? ""
+            let price = wine.price?.stringValue ?? ""
             
-            if !criteria.producer.isEmpty {
-                let wineProducer = wine.producer?.lowercased() ?? ""
-                if !wineProducer.contains(criteria.producer.lowercased()) {
-                    return false
-                }
-            }
-            
-            if !criteria.category.isEmpty {
-                if wine.category != criteria.category {
-                    return false
-                }
-            }
-            
-            if !criteria.country.isEmpty {
-                if wine.country != criteria.country {
-                    return false
-                }
-            }
-            
-            if !criteria.region.isEmpty {
-                if wine.region != criteria.region {
-                    return false
-                }
-            }
-            
-            if !criteria.subregion.isEmpty {
-                if wine.subregion != criteria.subregion {
-                    return false
-                }
-            }
-            
-            if !criteria.type.isEmpty {
-                if wine.type != criteria.type {
-                    return false
-                }
-            }
-            
-            if !criteria.storageLocation.isEmpty {
-                let wineStorage = wine.storageLocation?.lowercased() ?? ""
-                if !wineStorage.contains(criteria.storageLocation.lowercased()) {
-                    return false
-                }
-            }
-            
-            // Vintage range filter
-            if !criteria.vintageFrom.isEmpty || !criteria.vintageTo.isEmpty {
-                guard let vintageString = wine.vintage,
-                      let vintage = Int(vintageString) else {
-                    return false
-                }
-                
-                if !criteria.vintageFrom.isEmpty {
-                    if let fromYear = Int(criteria.vintageFrom), vintage < fromYear {
-                        return false
-                    }
-                }
-                
-                if !criteria.vintageTo.isEmpty {
-                    if let toYear = Int(criteria.vintageTo), vintage > toYear {
-                        return false
-                    }
-                }
-            }
-            
-            // Alcohol range filter
-            if !criteria.alcoholFrom.isEmpty || !criteria.alcoholTo.isEmpty {
-                guard let alcoholString = wine.alcohol?.replacingOccurrences(of: "%", with: ""),
-                      let alcohol = Double(alcoholString) else {
-                    return false
-                }
-                
-                if !criteria.alcoholFrom.isEmpty {
-                    if let fromAlcohol = Double(criteria.alcoholFrom), alcohol < fromAlcohol {
-                        return false
-                    }
-                }
-                
-                if !criteria.alcoholTo.isEmpty {
-                    if let toAlcohol = Double(criteria.alcoholTo), alcohol > toAlcohol {
-                        return false
-                    }
-                }
-            }
-            
-            // Price range filter
-            if !criteria.priceFrom.isEmpty || !criteria.priceTo.isEmpty {
-                guard let priceDecimal = wine.price,
-                      let price = Double(priceDecimal.stringValue) else {
-                    return false
-                }
-                
-                if !criteria.priceFrom.isEmpty {
-                    if let fromPrice = Double(criteria.priceFrom), price < fromPrice {
-                        return false
-                    }
-                }
-                
-                if !criteria.priceTo.isEmpty {
-                    if let toPrice = Double(criteria.priceTo), price > toPrice {
-                        return false
-                    }
-                }
-            }
-            
-            // Quantity range filter
-            if !criteria.quantityFrom.isEmpty || !criteria.quantityTo.isEmpty {
-                let quantity = Int(wine.quantity)
-                
-                if !criteria.quantityFrom.isEmpty {
-                    if let fromQuantity = Int(criteria.quantityFrom), quantity < fromQuantity {
-                        return false
-                    }
-                }
-                
-                if !criteria.quantityTo.isEmpty {
-                    if let toQuantity = Int(criteria.quantityTo), quantity > toQuantity {
-                        return false
-                    }
-                }
-            }
-            
-            // Ready to drink range filter
-            if !criteria.readyToTrinkFrom.isEmpty || !criteria.readyToTrinkTo.isEmpty {
-                guard let readyString = wine.readyToTrinkYear,
-                      let readyYear = Int(readyString) else {
-                    return false
-                }
-                
-                if !criteria.readyToTrinkFrom.isEmpty {
-                    if let fromYear = Int(criteria.readyToTrinkFrom), readyYear < fromYear {
-                        return false
-                    }
-                }
-                
-                if !criteria.readyToTrinkTo.isEmpty {
-                    if let toYear = Int(criteria.readyToTrinkTo), readyYear > toYear {
-                        return false
-                    }
-                }
-            }
-            
-            // Best before range filter
-            if !criteria.bestBeforeFrom.isEmpty || !criteria.bestBeforeTo.isEmpty {
-                guard let bestBeforeString = wine.bestBeforeYear,
-                      let bestBeforeYear = Int(bestBeforeString) else {
-                    return false
-                }
-                
-                if !criteria.bestBeforeFrom.isEmpty {
-                    if let fromYear = Int(criteria.bestBeforeFrom), bestBeforeYear < fromYear {
-                        return false
-                    }
-                }
-                
-                if !criteria.bestBeforeTo.isEmpty {
-                    if let toYear = Int(criteria.bestBeforeTo), bestBeforeYear > toYear {
-                        return false
-                    }
-                }
-            }
-            
-            // Bottle size filter
-            if !criteria.bottleSizeFilter.isEmpty {
-                guard let bottleSize = wine.bottleSize else {
-                    return false
-                }
-                
-                // Extract numeric value from bottle size
-                let numericString = bottleSize.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
-                if let bottleSizeValue = Double(numericString) {
-                    // Convert filter value to ml if needed based on settings
-                    let filterInMl = settings.convertToMilliliters(criteria.bottleSizeFilter, from: settings.bottleSizeUnit)
-                    if let filterMl = Double(filterInMl.replacingOccurrences(of: "ml", with: "")) {
-                        if abs(bottleSizeValue - filterMl) > 1.0 { // Allow small tolerance
-                            return false
-                        }
-                    }
-                }
-            }
-            
-            return true
+            return name.contains(lowercasedSearch) ||
+                   producer.contains(lowercasedSearch) ||
+                   vintage.contains(lowercasedSearch) ||
+                   alcohol.contains(lowercasedSearch) ||
+                   category.contains(lowercasedSearch) ||
+                   country.contains(lowercasedSearch) ||
+                   region.contains(lowercasedSearch) ||
+                   subregion.contains(lowercasedSearch) ||
+                   type.contains(lowercasedSearch) ||
+                   bottleSize.contains(lowercasedSearch) ||
+                   readyToTrinkYear.contains(lowercasedSearch) ||
+                   bestBeforeYear.contains(lowercasedSearch) ||
+                   storageLocation.contains(lowercasedSearch) ||
+                   price.contains(lowercasedSearch)
         }
     }
 
@@ -467,47 +244,11 @@ struct ContentView: View {
                 
                 // Search Bar and Total Quantity
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        TextField("Search wines...", text: $viewModel.searchText)
-                            .textFieldStyle(.roundedBorder)
-                        
-                        Button(action: {
-                            showingAdvancedSearch = true
-                        }) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(viewModel.advancedSearchCriteria.hasActiveCriteria() ? .accentColor : .secondary)
-                                .font(.system(size: 16, weight: viewModel.advancedSearchCriteria.hasActiveCriteria() ? .bold : .regular))
-                                .frame(width: 32, height: 32)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(viewModel.advancedSearchCriteria.hasActiveCriteria() ? Color.accentColor.opacity(0.1) : Color.clear)
-                                        .strokeBorder(
-                                            viewModel.advancedSearchCriteria.hasActiveCriteria() ? Color.accentColor : Color.secondary.opacity(0.3),
-                                            lineWidth: 1
-                                        )
-                                )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemBackground))
-                    
-                    // Show active advanced search indicator
-                    if viewModel.advancedSearchCriteria.hasActiveCriteria() {
-                        HStack {
-                            Text("Advanced filters active")
-                                .font(.caption)
-                                .foregroundColor(.accentColor)
-                            
-                            Button("Clear") {
-                                viewModel.advancedSearchCriteria.reset()
-                            }
-                            .font(.caption)
-                            .foregroundColor(.accentColor)
-                        }
+                    TextField("Search wines...", text: $viewModel.searchText)
+                        .textFieldStyle(.roundedBorder)
                         .padding(.horizontal)
-                    }
+                        .padding(.vertical, 8)
+                        .background(Color(.systemBackground))
                     
                     // Total Quantity aligned with wine item quantities
                     HStack {
@@ -538,18 +279,6 @@ struct ContentView: View {
                                 WineRowView(wine: wine)
                             }
                             .id(wineId)
-                            .swipeActions(edge: .leading) {
-                                if wine.quantity > 0 {
-                                    Button("Consume") {
-                                        // Add haptic feedback
-                                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                                        impactFeedback.impactOccurred()
-                                        
-                                        consumeWine(wine)
-                                    }
-                                    .tint(.green)
-                                }
-                            }
                             .swipeActions(edge: .trailing) {
                                 Button("Delete", role: .destructive) {
                                     deleteWine(wine)
@@ -610,11 +339,6 @@ struct ContentView: View {
                         }) {
                             Image(systemName: "printer")
                         }
-                        Button(action: {
-                            showingHistory = true
-                        }) {
-                            Image(systemName: "clock")
-                        }
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -627,7 +351,7 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showingAddWine) {
                 NavigationStack {
-                    AddWineView(historyService: historyService)
+                    AddWineView()
                         .environmentObject(settings)
                 }
             }
@@ -637,13 +361,6 @@ struct ContentView: View {
             .sheet(isPresented: $showingPrintView) {
                 PrintView(viewModel: viewModel)
                     .environmentObject(settings)
-            }
-            .sheet(isPresented: $showingAdvancedSearch) {
-                AdvancedSearchView(criteria: viewModel.advancedSearchCriteria)
-                    .environmentObject(settings)
-            }
-            .sheet(isPresented: $showingHistory) {
-                WineHistoryView(historyService: historyService)
             }
         }
         .environmentObject(settings)
@@ -665,9 +382,6 @@ struct ContentView: View {
 
     private func deleteWine(_ wine: Wine) {
         withAnimation {
-            // Log the wine deletion to history before deleting
-            historyService.logWineDeleted(wine: wine)
-            
             viewContext.delete(wine)
             try? viewContext.save()
             viewModel.refreshData()
@@ -679,9 +393,6 @@ struct ContentView: View {
             let groupedItems = groupedWines()
             for index in offsets {
                 if let wine = groupedItems[index].wine {
-                    // Log the wine deletion to history before deleting
-                    historyService.logWineDeleted(wine: wine)
-                    
                     viewContext.delete(wine)
                 }
             }
@@ -690,32 +401,6 @@ struct ContentView: View {
         }
     }
     
-    private func consumeWine(_ wine: Wine) {
-        // Don't consume if there's nothing to consume
-        guard wine.quantity > 0 else { return }
-        
-        let oldQuantity = wine.quantity
-        wine.quantity -= 1
-        
-        do {
-            try viewContext.save()
-            
-            // Log the wine consumption to history
-            historyService.logWineConsumed(wine: wine, quantityConsumed: 1)
-            
-            // Force an update to the object
-            viewContext.refresh(wine, mergeChanges: true)
-            // Make sure the changes are processed immediately
-            wine.objectWillChange.send()
-            
-            // Refresh the view model
-            viewModel.refreshData()
-        } catch {
-            print("Error saving context: \(error)")
-            wine.quantity = oldQuantity
-        }
-    }
-
     private func shouldShowSeparatorAfterTitle(at index: Int, in groups: [(level: Int, title: String, wine: Wine?)]) -> Bool {
         // Check if the next item is a wine
         if index < groups.count - 1 {
