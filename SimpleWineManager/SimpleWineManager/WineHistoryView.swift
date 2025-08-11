@@ -99,6 +99,13 @@ struct WineHistoryView: View {
                             Section {
                                 ForEach(group.entries, id: \.self) { entry in
                                     HistoryRowView(entry: entry)
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                            Button(role: .destructive) {
+                                                deleteHistoryEntry(entry)
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
+                                        }
                                 }
                             } header: {
                                 Text(formatSectionDate(group.date))
@@ -158,6 +165,18 @@ struct WineHistoryView: View {
         } else {
             formatter.dateFormat = "MMMM d, yyyy"
             return formatter.string(from: date)
+        }
+    }
+    
+    private func deleteHistoryEntry(_ entry: WineHistory) {
+        // Defensive check to ensure the entry is valid
+        guard !entry.isDeleted, entry.managedObjectContext != nil else {
+            print("Warning: Attempted to delete an invalid history entry")
+            return
+        }
+        
+        withAnimation {
+            historyService.deleteHistoryEntry(entry)
         }
     }
 }

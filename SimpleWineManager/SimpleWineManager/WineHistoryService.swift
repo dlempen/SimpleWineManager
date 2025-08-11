@@ -112,6 +112,35 @@ class WineHistoryService: ObservableObject {
         }
     }
     
+    // MARK: - History Management Methods
+    
+    func deleteHistoryEntry(_ historyEntry: WineHistory) {
+        // Ensure we're on the main thread for UI updates
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            self.viewContext.delete(historyEntry)
+            
+            do {
+                try self.viewContext.save()
+                print("History entry deleted successfully")
+                
+                // Force UI refresh by posting a notification
+                DispatchQueue.main.async {
+                    self.objectWillChange.send()
+                }
+            } catch {
+                print("Error deleting history entry: \(error)")
+                
+                // If save failed, restore the object and show error
+                self.viewContext.rollback()
+                
+                // Could add user notification here if needed
+                // For now, just log the error
+            }
+        }
+    }
+    
     // MARK: - Migration Methods
     
     func migrateHistoryEntriesToIncludeRunningTotals() {
