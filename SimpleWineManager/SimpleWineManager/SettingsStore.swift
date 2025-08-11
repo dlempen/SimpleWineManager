@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 struct SortOrder: Codable, Identifiable, Equatable {
     var id: UUID
@@ -65,6 +66,12 @@ class SettingsStore: ObservableObject {
         }
     }
     
+    @Published var imageQuality: ImageQuality {
+        didSet {
+            UserDefaults.standard.set(imageQuality.rawValue, forKey: "imageQuality")
+        }
+    }
+    
     @Published var sortOrders: [SortOrder] {
         didSet {
             if let encoded = try? JSONEncoder().encode(sortOrders) {
@@ -97,6 +104,14 @@ class SettingsStore: ObservableObject {
         self.selectedCurrency = UserDefaults.standard.string(forKey: "selectedCurrency") ?? "EUR (€)"
         self.bottleSizeUnit = UserDefaults.standard.string(forKey: "bottleSizeUnit") ?? "ml"
         self.importWithQuantity = UserDefaults.standard.bool(forKey: "importWithQuantity") // defaults to false
+        
+        // Load image quality setting
+        if let imageQualityString = UserDefaults.standard.string(forKey: "imageQuality"),
+           let imageQuality = ImageQuality(rawValue: imageQualityString) {
+            self.imageQuality = imageQuality
+        } else {
+            self.imageQuality = .medium // default to medium quality
+        }
         
         // Load sort orders
         if let data = UserDefaults.standard.data(forKey: "sortOrders"),
@@ -197,5 +212,122 @@ class SettingsStore: ObservableObject {
         
         // Convert from current unit to ml for storage
         return "\(convertToMilliliters(size, from: bottleSizeUnit))ml"
+    }
+    
+    // MARK: - Image Compression Functions
+    
+    /// Compresses an image to fit within the selected quality range
+    func compressImage(_ image: UIImage) -> Data? {
+        return compressImage(image, to: imageQuality)
+    }
+    
+    /// Compresses an image to fit within the specified quality range
+    func compressImage(_ image: UIImage, to quality: ImageQuality) -> Data? {
+        let targetRange = quality.targetSizeRange
+        let targetSize = (targetRange.min + targetRange.max) / 2 // Target the middle of the range
+        
+        // First, try to resize the image if it's very large
+        let resizedImage = resizeImageIfNeeded(image, targetMaxSize: targetRange.max)
+        
+        // Start with reasonable quality bounds
+        var minQuality: CGFloat = 0.05
+        var maxQuality: CGFloat = 1.0
+        var bestData: Data?
+        var bestDifference = Int.max
+        
+        // Binary search for optimal compression quality
+        for _ in 0..<20 { // More iterations for better precision
+            let currentQuality = (minQuality + maxQuality) / 2
+            guard let imageData = resizedImage.jpegData(compressionQuality: currentQuality) else {
+                break
+            }
+            
+            let size = imageData.count
+            let differenceFromTarget = abs(size - targetSize)
+            
+            // Keep track of the best result (closest to target)
+            if differenceFromTarget < bestDifference {
+                bestDifference = differenceFromTarget
+                bestData = imageData
+            }
+            
+            // Adjust search range based on current size
+            if size > targetSize {
+                // Image is larger than target, reduce quality
+                maxQuality = currentQuality
+            } else {
+                // Image is smaller than target, increase quality
+                minQuality = currentQuality
+            }
+            
+            // If we're very close to target or quality range is too narrow, we can stop
+            if differenceFromTarget < 5000 || maxQuality - minQuality < 0.005 {
+                break
+            }
+        }
+        
+        // Return the best result we found, or fallback to low quality if nothing worked
+        return bestData ?? resizedImage.jpegData(compressionQuality: 0.1)
+    }
+    
+    /// Resizes image if it's too large to help with compression
+    private func resizeImageIfNeeded(_ image: UIImage, targetMaxSize: Int) -> UIImage {
+        // Calculate current image data size
+        guard let currentData = image.jpegData(compressionQuality: 0.8) else { return image }
+        let currentSize = currentData.count
+        
+        // If current size is much larger than target, resize the image
+        if currentSize > targetMaxSize * 3 { // 3x larger than target max
+            let reductionFactor = sqrt(Double(targetMaxSize * 2) / Double(currentSize))
+            let newSize = CGSize(
+                width: image.size.width * reductionFactor,
+                height: image.size.height * reductionFactor
+            )
+            
+            // Ensure minimum size (don't make images too small)
+            let minDimension: CGFloat = 400
+            let finalSize = CGSize(
+                width: max(newSize.width, minDimension),
+                height: max(newSize.height, minDimension)
+            )
+            
+            UIGraphicsBeginImageContextWithOptions(finalSize, false, 1.0)
+            image.draw(in: CGRect(origin: .zero, size: finalSize))
+            let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+            
+            return resizedImage ?? image
+        }
+        
+        return image
+    }
+    
+    /// Gets the file size of image data in a human-readable format
+    func getImageSizeString(_ data: Data?) -> String {
+        guard let data = data else { return "0 KB" }
+        let sizeInKB = Double(data.count) / 1024.0
+        return String(format: "%.1f KB", sizeInKB)
+    }
+}
+
+enum ImageQuality: String, CaseIterable, Codable {
+    case small = "small"
+    case medium = "medium"
+    case large = "large"
+    
+    var displayName: String {
+        switch self {
+        case .small: return "Small (50-100 KB)"
+        case .medium: return "Medium (100-200 KB)"
+        case .large: return "Large (200-400 KB)"
+        }
+    }
+    
+    var targetSizeRange: (min: Int, max: Int) {
+        switch self {
+        case .small: return (50_000, 100_000)
+        case .medium: return (100_000, 200_000)
+        case .large: return (200_000, 400_000)
+        }
     }
 }

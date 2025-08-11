@@ -43,6 +43,10 @@ struct WineDetailView: View {
     @State private var isShowingBackCamera = false
     @State private var updatingFromSelection = false
     
+    // Track if images are newly taken vs. existing
+    @State private var frontImageIsNew = false
+    @State private var backImageIsNew = false
+    
     private func setupEditingState() {
         editName = wine.name ?? ""
         editProducer = wine.producer ?? ""
@@ -132,10 +136,14 @@ struct WineDetailView: View {
             }
         }
         .sheet(isPresented: $isShowingFrontCamera) {
-            ImagePicker(image: $editFrontImage, sourceType: .camera, onImageSelected: { _ in })
+            ImagePicker(image: $editFrontImage, sourceType: .camera, onImageSelected: { _ in 
+                frontImageIsNew = true // Mark as newly taken
+            })
         }
         .sheet(isPresented: $isShowingBackCamera) {
-            ImagePicker(image: $editBackImage, sourceType: .camera, onImageSelected: { _ in })
+            ImagePicker(image: $editBackImage, sourceType: .camera, onImageSelected: { _ in 
+                backImageIsNew = true // Mark as newly taken
+            })
         }
         .overlay {
             if isShowingFullScreen, let image = selectedImage {
@@ -347,7 +355,14 @@ struct WineDetailView: View {
                                         isShowingFullScreen = true
                                     }
                                 }
-                            Button(action: { editFrontImage = nil }) {
+                            // Display image size in edit mode
+                            Text(getFrontImageSizeDisplay())
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Button(action: { 
+                                editFrontImage = nil
+                                frontImageIsNew = false // Reset new flag
+                            }) {
                                 Text("Delete")
                                     .foregroundColor(.red)
                                     .padding(.horizontal, 12)
@@ -379,7 +394,14 @@ struct WineDetailView: View {
                                         isShowingFullScreen = true
                                     }
                                 }
-                            Button(action: { editBackImage = nil }) {
+                            // Display image size in edit mode
+                            Text(getBackImageSizeDisplay())
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Button(action: { 
+                                editBackImage = nil
+                                backImageIsNew = false // Reset new flag
+                            }) {
                                 Text("Delete")
                                     .foregroundColor(.red)
                                     .padding(.horizontal, 12)
@@ -612,9 +634,17 @@ struct WineDetailView: View {
         
         if let frontData = wine.frontImageData {
             editFrontImage = UIImage(data: frontData)
+            frontImageIsNew = false // Existing image
+        } else {
+            editFrontImage = nil
+            frontImageIsNew = false
         }
         if let backData = wine.backImageData {
             editBackImage = UIImage(data: backData)
+            backImageIsNew = false // Existing image
+        } else {
+            editBackImage = nil
+            backImageIsNew = false
         }
         
         // Setup wine regions
@@ -655,14 +685,22 @@ struct WineDetailView: View {
         
         // Handle front image updates and deletions
         if let frontImage = editFrontImage {
-            wine.frontImageData = frontImage.jpegData(compressionQuality: 0.8)
+            if frontImageIsNew {
+                // Compress new images to selected quality
+                wine.frontImageData = settings.compressImage(frontImage)
+            }
+            // If frontImageIsNew is false, don't modify wine.frontImageData (keep existing)
         } else {
             wine.frontImageData = nil
         }
         
         // Handle back image updates and deletions
         if let backImage = editBackImage {
-            wine.backImageData = backImage.jpegData(compressionQuality: 0.8)
+            if backImageIsNew {
+                // Compress new images to selected quality
+                wine.backImageData = settings.compressImage(backImage)
+            }
+            // If backImageIsNew is false, don't modify wine.backImageData (keep existing)
         } else {
             wine.backImageData = nil
         }
@@ -795,6 +833,44 @@ struct WineDetailView: View {
         } catch {
             print("Error saving context: \(error)")
             wine.quantity = oldQuantity
+        }
+    }
+    
+    /// Helper function to get image size display for front image
+    private func getFrontImageSizeDisplay() -> String {
+        guard let image = editFrontImage else { return "No Image" }
+        
+        if frontImageIsNew {
+            // For new images, show what the compressed size will be
+            if let compressedData = settings.compressImage(image) {
+                return "Will save as: \(settings.getImageSizeString(compressedData))"
+            }
+            return "Compression error"
+        } else {
+            // For existing images, show current size
+            if let currentData = wine.frontImageData {
+                return "Current: \(settings.getImageSizeString(currentData))"
+            }
+            return "No data"
+        }
+    }
+    
+    /// Helper function to get image size display for back image
+    private func getBackImageSizeDisplay() -> String {
+        guard let image = editBackImage else { return "No Image" }
+        
+        if backImageIsNew {
+            // For new images, show what the compressed size will be
+            if let compressedData = settings.compressImage(image) {
+                return "Will save as: \(settings.getImageSizeString(compressedData))"
+            }
+            return "Compression error"
+        } else {
+            // For existing images, show current size
+            if let currentData = wine.backImageData {
+                return "Current: \(settings.getImageSizeString(currentData))"
+            }
+            return "No data"
         }
     }
 }

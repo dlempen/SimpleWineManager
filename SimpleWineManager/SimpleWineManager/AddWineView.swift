@@ -447,11 +447,11 @@ struct AddWineView: View {
         newWine.remarks = remarks
         newWine.wineRating = wineRating
         
-        if let frontImage = frontImage, let data = frontImage.jpegData(compressionQuality: 0.8) {
+        if let frontImage = frontImage, let data = settings.compressImage(frontImage) {
             newWine.frontImageData = data
         }
         
-        if let backImage = backImage, let data = backImage.jpegData(compressionQuality: 0.8) {
+        if let backImage = backImage, let data = settings.compressImage(backImage) {
             newWine.backImageData = data
         }
         

@@ -12,6 +12,10 @@ struct SettingsView: View {
     @State private var showingImportPicker = false
     @State private var showingImportAlert = false
     @State private var importAlertMessage = ""
+    @State private var isOptimizingImages = false
+    @State private var optimizationProgress = ""
+    @State private var currentOptimizationIndex = 0
+    @State private var totalImagesToOptimize = 0
     
     @StateObject private var exportImportManager: WineExportImportManager
     
@@ -51,6 +55,39 @@ struct SettingsView: View {
                     Picker("Select Currency", selection: $settings.selectedCurrency) {
                         ForEach(SettingsStore.currencies, id: \.self) { currency in
                             Text(currency).tag(currency)
+                        }
+                    }
+                }
+                
+                Section(header: Text("Image Quality"),
+                        footer: Text("Choose the desired image size for wine label photos. Images are automatically compressed when saved.")) {
+                    Picker("Select Quality", selection: $settings.imageQuality) {
+                        ForEach(ImageQuality.allCases, id: \.self) { quality in
+                            Text(quality.displayName).tag(quality)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    
+                    VStack(spacing: 8) {
+                        Button(action: { optimizeAllImages() }) {
+                            HStack {
+                                if isOptimizingImages {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text("Optimizing...")
+                                } else {
+                                    Image(systemName: "arrow.down.circle")
+                                    Text("Optimize All Images")
+                                }
+                            }
+                        }
+                        .foregroundColor(.blue)
+                        .disabled(isOptimizingImages)
+                        
+                        if isOptimizingImages && !optimizationProgress.isEmpty {
+                            Text(optimizationProgress)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
@@ -167,6 +204,102 @@ struct SettingsView: View {
             
         case .failure(let error):
             importAlertMessage = "Failed to access file: \(error.localizedDescription)"
+            showingImportAlert = true
+        }
+    }
+    
+    private func optimizeAllImages() {
+        Task {
+            isOptimizingImages = true
+            currentOptimizationIndex = 0
+            optimizationProgress = ""
+            await performBulkImageOptimization()
+        }
+    }
+    
+    @MainActor
+    private func performBulkImageOptimization() async {
+        defer {
+            isOptimizingImages = false
+            optimizationProgress = ""
+        }
+        
+        // Fetch all wines with images
+        let request: NSFetchRequest<Wine> = Wine.fetchRequest()
+        request.predicate = NSPredicate(format: "frontImageData != nil OR backImageData != nil")
+        
+        do {
+            let wines = try viewContext.fetch(request)
+            totalImagesToOptimize = wines.count
+            
+            // Early exit if no wines with images
+            if wines.isEmpty {
+                importAlertMessage = "No wines with images found to optimize."
+                showingImportAlert = true
+                return
+            }
+            
+            let targetRange = settings.imageQuality.targetSizeRange
+            var optimizedCount = 0
+            currentOptimizationIndex = 0
+            
+            // Update initial progress
+            optimizationProgress = "Analyzing \(totalImagesToOptimize) wine\(totalImagesToOptimize == 1 ? "" : "s")..."
+            
+            // Process wines individually to show accurate progress
+            for (index, wine) in wines.enumerated() {
+                autoreleasepool {
+                    currentOptimizationIndex = index + 1
+                    optimizationProgress = "Processing \(currentOptimizationIndex)/\(totalImagesToOptimize)"
+                    
+                    var needsSave = false
+                    
+                    // Optimize front image only if it's larger than target max
+                    // Never re-compress images that are already smaller than target range
+                    if let frontImageData = wine.frontImageData,
+                       frontImageData.count > targetRange.max,
+                       let frontImage = UIImage(data: frontImageData),
+                       let optimizedData = settings.compressImage(frontImage) {
+                        wine.frontImageData = optimizedData
+                        needsSave = true
+                    }
+                    
+                    // Optimize back image only if it's larger than target max
+                    // Never re-compress images that are already smaller than target range
+                    if let backImageData = wine.backImageData,
+                       backImageData.count > targetRange.max,
+                       let backImage = UIImage(data: backImageData),
+                       let optimizedData = settings.compressImage(backImage) {
+                        wine.backImageData = optimizedData
+                        needsSave = true
+                    }
+                    
+                    if needsSave {
+                        optimizedCount += 1
+                    }
+                }
+                
+                // Save every 10 wines to prevent memory buildup and show progress
+                if (index + 1) % 10 == 0 || index == wines.count - 1 {
+                    if viewContext.hasChanges {
+                        try viewContext.save()
+                    }
+                }
+                
+                // Small delay to allow UI updates and prevent overwhelming the system
+                try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+            }
+            
+            // Show completion alert
+            if optimizedCount > 0 {
+                importAlertMessage = "Optimized \(optimizedCount) wine\(optimizedCount == 1 ? "" : "s") images to \(settings.imageQuality.displayName.lowercased()) quality."
+            } else {
+                importAlertMessage = "All images are already optimized for the selected quality setting."
+            }
+            showingImportAlert = true
+            
+        } catch {
+            importAlertMessage = "Failed to optimize images: \(error.localizedDescription)"
             showingImportAlert = true
         }
     }
