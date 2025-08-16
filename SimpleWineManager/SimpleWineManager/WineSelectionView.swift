@@ -9,6 +9,7 @@ struct WineSelectionView: View {
     @State private var selectedWines: Set<NSManagedObjectID> = []
     @State private var searchText = ""
     @State private var includeImages = true
+    @State private var exportAsCSV = false
     @State private var isExporting = false
     @State private var showingShareSheet = false
     @State private var exportURL: URL?
@@ -102,14 +103,25 @@ struct WineSelectionView: View {
                 // Export options
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Toggle("Include wine images", isOn: $includeImages)
+                        Toggle("Export as CSV", isOn: $exportAsCSV)
                             .font(.caption)
                         Spacer()
                     }
-                    if !includeImages {
-                        Text("Excluding images creates smaller export files")
+                    if exportAsCSV {
+                        Text("CSV format for spreadsheet applications (no images)")
                             .font(.caption2)
                             .foregroundColor(.secondary)
+                    } else {
+                        HStack {
+                            Toggle("Include wine images", isOn: $includeImages)
+                                .font(.caption)
+                            Spacer()
+                        }
+                        if !includeImages {
+                            Text("Excluding images creates smaller export files")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -193,7 +205,14 @@ struct WineSelectionView: View {
         let selectedWineObjects = wines.filter { selectedWines.contains($0.objectID) }
         
         DispatchQueue.global(qos: .userInitiated).async {
-            if let url = exportManager.exportWines(selectedWineObjects, includeImages: includeImages) {
+            let url: URL?
+            if exportAsCSV {
+                url = exportManager.exportWinesAsCSV(selectedWineObjects)
+            } else {
+                url = exportManager.exportWines(selectedWineObjects, includeImages: includeImages)
+            }
+            
+            if let url = url {
                 DispatchQueue.main.async {
                     self.exportURL = url
                     self.isExporting = false

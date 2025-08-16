@@ -10,6 +10,8 @@ struct SettingsView: View {
     @State private var editingSortOrder: SortOrder?
     @State private var showingWineSelection = false
     @State private var showingImportPicker = false
+    @State private var showingImportView = false
+    @State private var selectedImportFileURL: URL?
     @State private var showingImportAlert = false
     @State private var importAlertMessage = ""
     @State private var isOptimizingImages = false
@@ -134,13 +136,10 @@ struct SettingsView: View {
                 }
                 
                 Section(header: Text("Data Management"),
-                        footer: Text("Export your wine collection to share with others, or import wines from a shared collection.")) {
+                        footer: Text("Export your wine collection to share with others, or import wines from CSV files or shared collections.")) {
                     Button(action: { showingWineSelection = true }) {
                         Label("Export Wines", systemImage: "square.and.arrow.up")
                     }
-                    
-                    Toggle("Import with quantity", isOn: $settings.importWithQuantity)
-                        .help("When enabled, imported wines will keep their original quantities. When disabled, all imported wines will have quantity set to 0.")
                     
                     Button(action: { showingImportPicker = true }) {
                         Label("Import Wines", systemImage: "square.and.arrow.down")
@@ -167,10 +166,15 @@ struct SettingsView: View {
             }
             .fileImporter(
                 isPresented: $showingImportPicker,
-                allowedContentTypes: [.simpleWineManager],
+                allowedContentTypes: [.simpleWineManager, .text, .plainText],
                 allowsMultipleSelection: false
             ) { result in
-                handleImport(result)
+                handleImportFilePicker(result)
+            }
+            .sheet(isPresented: $showingImportView) {
+                if let fileURL = selectedImportFileURL {
+                    WineImportView(fileURL: fileURL, settings: settings, context: viewContext)
+                }
             }
             .alert("Import Result", isPresented: $showingImportAlert) {
                 Button("OK") { }
@@ -180,27 +184,12 @@ struct SettingsView: View {
         }
     }
     
-    private func handleImport(_ result: Result<[URL], Error>) {
+    private func handleImportFilePicker(_ result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
-            
-            let importResult = exportImportManager.importWines(from: url)
-            switch importResult {
-            case .success(let result):
-                if result.skipped > 0 {
-                    importAlertMessage = "Import complete!\n• \(result.imported) wine\(result.imported == 1 ? "" : "s") imported\n• \(result.skipped) duplicate\(result.skipped == 1 ? "" : "s") skipped"
-                } else {
-                    importAlertMessage = "Successfully imported \(result.imported) wine\(result.imported == 1 ? "" : "s")."
-                }
-                
-                // Notify the app that data changed
-                NotificationCenter.default.post(name: NSNotification.Name("WineDataDidChange"), object: nil)
-                
-            case .failure(let error):
-                importAlertMessage = "Import failed: \(error.localizedDescription)"
-            }
-            showingImportAlert = true
+            selectedImportFileURL = url
+            showingImportView = true
             
         case .failure(let error):
             importAlertMessage = "Failed to access file: \(error.localizedDescription)"
