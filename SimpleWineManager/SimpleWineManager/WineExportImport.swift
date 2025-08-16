@@ -120,6 +120,78 @@ class WineExportImportManager: ObservableObject {
         }
     }
     
+    func exportWinesAsCSV(_ wines: [Wine]) -> URL? {
+        do {
+            // Create CSV content
+            var csvContent = ""
+            
+            // CSV Headers - all wine properties
+            let headers = [
+                "Name", "Producer", "Vintage", "Category", "Alcohol %", 
+                "Quantity", "Price", "Bottle Size", "Country", "Region", 
+                "Subregion", "Type", "Ready to Drink Year", "Best Before Year", 
+                "Storage Location", "Remarks", "Rating"
+            ]
+            
+            // Add headers to CSV
+            csvContent += headers.map { escapeCSVField($0) }.joined(separator: ",") + "\n"
+            
+            // Add wine data
+            for wine in wines {
+                // Break down the array construction to help Swift compiler type-checking
+                let name = wine.name ?? ""
+                let producer = wine.producer ?? ""
+                let vintage = wine.vintage ?? ""
+                let category = wine.category ?? ""
+                let alcohol = wine.alcohol ?? ""
+                let quantity = String(wine.quantity)
+                let price = wine.price?.stringValue ?? ""
+                let bottleSize = settings.getDisplayBottleSize(wine.bottleSize ?? "")
+                let country = wine.country ?? ""
+                let region = wine.region ?? ""
+                let subregion = wine.subregion ?? ""
+                let type = wine.type ?? ""
+                let readyToTrinkYear = wine.readyToTrinkYear ?? ""
+                let bestBeforeYear = wine.bestBeforeYear ?? ""
+                let storageLocation = wine.storageLocation ?? ""
+                let remarks = wine.remarks ?? ""
+                let rating = wine.wineRating ?? ""
+                
+                let fields = [
+                    name, producer, vintage, category, alcohol, quantity, price, bottleSize,
+                    country, region, subregion, type, readyToTrinkYear, bestBeforeYear,
+                    storageLocation, remarks, rating
+                ]
+                
+                csvContent += fields.map { escapeCSVField($0) }.joined(separator: ",") + "\n"
+            }
+            
+            // Write to file
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileName = "WineCollection_\(DateFormatter.fileNameFormatter.string(from: Date())).csv"
+            let fileURL = documentsPath.appendingPathComponent(fileName)
+            
+            try csvContent.write(to: fileURL, atomically: true, encoding: .utf8)
+            return fileURL
+        } catch {
+            print("CSV Export error: \(error)")
+            return nil
+        }
+    }
+    
+    // Helper function to properly escape CSV fields
+    private func escapeCSVField(_ field: String) -> String {
+        let trimmedField = field.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
+        if trimmedField.contains(",") || trimmedField.contains("\"") || trimmedField.contains("\n") || trimmedField.contains("\r") {
+            let escapedField = trimmedField.replacingOccurrences(of: "\"", with: "\"\"")
+            return "\"\(escapedField)\""
+        }
+        
+        return trimmedField
+    }
+    
     func importWines(from url: URL) -> Result<ImportResult, ImportError> {
         do {
             // Request access to security-scoped resource
