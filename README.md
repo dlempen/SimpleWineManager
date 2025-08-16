@@ -5,7 +5,7 @@ A privacy-focused iOS app for managing your personal wine collection. Store, org
 ![iOS](https://img.shields.io/badge/iOS-18.0+-blue.svg)
 ![Swift](https://img.shields.io/badge/Swift-5.0+-orange.svg)
 ![AI Powered](https://img.shields.io/badge/Built%20with-GitHub%20Copilot-purple.svg)
-![Version](https://img.shields.io/badge/Version-2.6-green.svg)
+![Version](https://img.shields.io/badge/Version-2.7%20Dev-orange.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## 🤖 Built with AI
