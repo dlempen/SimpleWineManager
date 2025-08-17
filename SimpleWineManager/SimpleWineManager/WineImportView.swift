@@ -28,6 +28,7 @@ struct WineImportView: View {
     @State private var fieldMappings: [String: WineField] = [:]
     @State private var csvImportStep: CSVImportStep = .fieldMapping // New state for CSV import steps
     @State private var processedWines: [ImportWine] = [] // Wines after field mapping is applied
+    @State private var charactersToRemove: String = "\"" // Characters to strip during import
     
     @StateObject private var exportImportManager: WineExportImportManager
     
@@ -196,6 +197,35 @@ struct WineImportView: View {
                         csvFieldMappingRow(csvField: header)
                     }
                 }
+                
+                Divider()
+                
+                // Character removal section
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Character Removal (Optional)")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    Text("Enter characters to remove from all imported data (e.g. quotes, brackets):")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    HStack {
+                        Text("Remove:")
+                            .foregroundColor(.secondary)
+                            .frame(width: 80, alignment: .leading)
+                        
+                        TextField("Characters to remove", text: $charactersToRemove)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.system(.body, design: .monospaced))
+                    }
+                    
+                    if !charactersToRemove.isEmpty {
+                        Text("These characters will be removed: \(charactersToRemove)")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                    }
+                }
             }
             .padding()
             .background(Color.gray.opacity(0.05))
@@ -318,13 +348,14 @@ struct WineImportView: View {
     }
     
     private func processPreviewValue(value: String, field: WineField) -> String {
+        let cleanedValue = removeUnwantedCharacters(from: value)
         switch field {
         case .alcohol:
-            return cleanAlcoholValue(value)
+            return cleanAlcoholValue(cleanedValue)
         case .bottleSize:
-            return cleanBottleSizeValue(value)
+            return cleanBottleSizeValue(cleanedValue)
         default:
-            return value
+            return cleanedValue
         }
     }
     
@@ -577,44 +608,48 @@ struct WineImportView: View {
             // Apply field mappings
             for (csvField, wineField) in fieldMappings {
                 guard wineField != .noImport,
-                      let value = csvData[csvField],
-                      !value.isEmpty else { continue }
+                      let rawValue = csvData[csvField],
+                      !rawValue.isEmpty else { continue }
+                
+                // Clean unwanted characters first
+                let cleanedValue = removeUnwantedCharacters(from: rawValue)
+                guard !cleanedValue.isEmpty else { continue }
                 
                 switch wineField {
                 case .name:
-                    name = value
+                    name = cleanedValue
                 case .producer:
-                    producer = value
+                    producer = cleanedValue
                 case .vintage:
-                    vintage = value
+                    vintage = cleanedValue
                 case .alcohol:
-                    alcohol = cleanAlcoholValue(value)
+                    alcohol = cleanAlcoholValue(cleanedValue)
                 case .quantity:
-                    quantity = Int16(value) ?? 1
+                    quantity = Int16(cleanedValue) ?? 1
                 case .category:
-                    category = value
+                    category = cleanedValue
                 case .country:
-                    country = value
+                    country = cleanedValue
                 case .region:
-                    region = value
+                    region = cleanedValue
                 case .subregion:
-                    subregion = value
+                    subregion = cleanedValue
                 case .type:
-                    type = value
+                    type = cleanedValue
                 case .bottleSize:
-                    bottleSize = cleanBottleSizeValue(value)
+                    bottleSize = cleanBottleSizeValue(cleanedValue)
                 case .readyToTrinkYear:
-                    readyToTrinkYear = value
+                    readyToTrinkYear = cleanedValue
                 case .bestBeforeYear:
-                    bestBeforeYear = value
+                    bestBeforeYear = cleanedValue
                 case .storageLocation:
-                    storageLocation = value
+                    storageLocation = cleanedValue
                 case .remarks:
-                    remarks = value
+                    remarks = cleanedValue
                 case .wineRating:
-                    wineRating = value
+                    wineRating = cleanedValue
                 case .price:
-                    price = Double(value)
+                    price = Double(cleanedValue)
                 case .noImport:
                     break
                 }
@@ -649,6 +684,20 @@ struct WineImportView: View {
         
         // Select all wines by default
         selectedWines = Set(processedWines.map { $0.id })
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// Removes user-specified unwanted characters from a string
+    private func removeUnwantedCharacters(from value: String) -> String {
+        guard !charactersToRemove.isEmpty else { return value }
+        
+        var cleanedValue = value
+        for character in charactersToRemove {
+            cleanedValue = cleanedValue.replacingOccurrences(of: String(character), with: "")
+        }
+        
+        return cleanedValue.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     private func isValidFieldMapping() -> Bool {

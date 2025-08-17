@@ -536,28 +536,52 @@ struct WineDetailView: View {
             
             // Wine Details
             Group {
-                DetailRow(label: "Name", value: wine.name ?? "")
-                DetailRow(label: "Producer", value: wine.producer ?? "")
-                DetailRow(label: "Vintage", value: wine.vintage ?? "")
+                if let name = wine.name, !name.isEmpty {
+                    DetailRow(label: "Name", value: name)
+                }
+                if let producer = wine.producer, !producer.isEmpty {
+                    DetailRow(label: "Producer", value: producer)
+                }
+                if let vintage = wine.vintage, !vintage.isEmpty {
+                    DetailRow(label: "Vintage", value: vintage)
+                }
                 if let alcohol = wine.alcohol, !alcohol.isEmpty {
                     DetailRow(label: "Alcohol", value: "\(alcohol)%")
                 }
                 DetailRow(label: "Quantity", value: "\(wine.quantity)")
-                DetailRow(label: "Category", value: wine.category ?? "")
-                DetailRow(label: "Country", value: wine.country ?? "")
-                DetailRow(label: "Region", value: wine.region ?? "")
-                DetailRow(label: "Subregion", value: wine.subregion ?? "")
-                DetailRow(label: "Type", value: wine.type ?? "")
+                if let category = wine.category, !category.isEmpty {
+                    DetailRow(label: "Category", value: category)
+                }
+                if let country = wine.country, !country.isEmpty {
+                    DetailRow(label: "Country", value: country)
+                }
+                if let region = wine.region, !region.isEmpty {
+                    DetailRow(label: "Region", value: region)
+                }
+                if let subregion = wine.subregion, !subregion.isEmpty {
+                    DetailRow(label: "Subregion", value: subregion)
+                }
+                if let type = wine.type, !type.isEmpty {
+                    DetailRow(label: "Type", value: type)
+                }
                 if let price = wine.price, price != 0 {
                     DetailRow(label: "Price", value: "\(price)\(settings.currencySymbol)")
                 }
                 if let bottleSize = wine.bottleSize {
                     DetailRow(label: "Bottle Size", value: settings.getDisplayBottleSize(bottleSize))
                 }
-                DetailRow(label: "Ready to drink", value: wine.readyToTrinkYear ?? "")
-                DetailRow(label: "Best before", value: wine.bestBeforeYear ?? "")
-                DetailRow(label: "Storage", value: wine.storageLocation ?? "")
-                DetailRow(label: "Rating", value: wine.wineRating ?? "")
+                if let readyToTrinkYear = wine.readyToTrinkYear, !readyToTrinkYear.isEmpty {
+                    DetailRow(label: "Ready to drink", value: readyToTrinkYear)
+                }
+                if let bestBeforeYear = wine.bestBeforeYear, !bestBeforeYear.isEmpty {
+                    DetailRow(label: "Best before", value: bestBeforeYear)
+                }
+                if let storageLocation = wine.storageLocation, !storageLocation.isEmpty {
+                    DetailRow(label: "Storage", value: storageLocation)
+                }
+                if let wineRating = wine.wineRating, !wineRating.isEmpty {
+                    DetailRow(label: "Rating", value: wineRating)
+                }
                 if let remarks = wine.remarks, !remarks.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
