@@ -175,6 +175,23 @@ struct PrintView: View {
             }
         }
         
+        if !criteria.bottleSizeFrom.isEmpty || !criteria.bottleSizeTo.isEmpty {
+            guard let bottleSize = wine.bottleSize else { return false }
+            let numericString = bottleSize.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
+            guard let bottleSizeValue = Double(numericString) else { return false }
+            
+            // Convert user input from their chosen unit to ml for comparison
+            if !criteria.bottleSizeFrom.isEmpty, let fromSizeInput = Double(criteria.bottleSizeFrom) {
+                let fromSizeInMl = Double(settings.convertToMilliliters(String(fromSizeInput), from: settings.bottleSizeUnit)) ?? fromSizeInput
+                guard bottleSizeValue >= fromSizeInMl else { return false }
+            }
+            
+            if !criteria.bottleSizeTo.isEmpty, let toSizeInput = Double(criteria.bottleSizeTo) {
+                let toSizeInMl = Double(settings.convertToMilliliters(String(toSizeInput), from: settings.bottleSizeUnit)) ?? toSizeInput
+                guard bottleSizeValue <= toSizeInMl else { return false }
+            }
+        }
+        
         return true
     }
 
