@@ -327,12 +327,15 @@ struct ContentView: View {
             let numericString = bottleSize.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
             guard let bottleSizeValue = Double(numericString) else { return false }
             
-            if !criteria.bottleSizeFrom.isEmpty, let fromSize = Double(criteria.bottleSizeFrom) {
-                guard bottleSizeValue >= fromSize else { return false }
+            // Convert user input from their chosen unit to ml for comparison
+            if !criteria.bottleSizeFrom.isEmpty, let fromSizeInput = Double(criteria.bottleSizeFrom) {
+                let fromSizeInMl = Double(settings.convertToMilliliters(String(fromSizeInput), from: settings.bottleSizeUnit)) ?? fromSizeInput
+                guard bottleSizeValue >= fromSizeInMl else { return false }
             }
             
-            if !criteria.bottleSizeTo.isEmpty, let toSize = Double(criteria.bottleSizeTo) {
-                guard bottleSizeValue <= toSize else { return false }
+            if !criteria.bottleSizeTo.isEmpty, let toSizeInput = Double(criteria.bottleSizeTo) {
+                let toSizeInMl = Double(settings.convertToMilliliters(String(toSizeInput), from: settings.bottleSizeUnit)) ?? toSizeInput
+                guard bottleSizeValue <= toSizeInMl else { return false }
             }
         }
         

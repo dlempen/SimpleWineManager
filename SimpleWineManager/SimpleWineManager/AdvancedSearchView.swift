@@ -333,14 +333,14 @@ struct AdvancedSearchView: View {
                             .frame(width: 60, alignment: .leading)
                         TextField("Min", text: $criteria.bottleSizeFrom)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .keyboardType(.numberPad)
+                            .keyboardType(.decimalPad)
                         
                         Text("To")
                             .foregroundColor(.secondary)
                             .frame(width: 30, alignment: .leading)
                         TextField("Max", text: $criteria.bottleSizeTo)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .keyboardType(.numberPad)
+                            .keyboardType(.decimalPad)
                     }
                 }
             }
