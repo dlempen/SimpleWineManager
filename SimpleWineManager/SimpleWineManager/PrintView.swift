@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PrintView: View {
     @ObservedObject var viewModel: WineListViewModel
+    @ObservedObject var advancedSearchCriteria: AdvancedSearchCriteria
     @EnvironmentObject var settings: SettingsStore
     @Environment(\.dismiss) private var dismiss
     
@@ -11,32 +12,172 @@ struct PrintView: View {
     @State private var editableTotal: String = ""
     
     private var filteredWines: [Wine] {
-        if viewModel.searchText.isEmpty {
-            return viewModel.wines
-        } else {
-            return viewModel.wines.filter { wine in
-                let searchLower = viewModel.searchText.lowercased()
-                return (wine.name?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.producer?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.vintage?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.grapes?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.country?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.region?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.subregion?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.type?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.category?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.storageLocation?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.purchasedFrom?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.remarks?.lowercased().contains(searchLower) ?? false) ||
-                       (wine.wineRating?.lowercased().contains(searchLower) ?? false)
+        let searchText = viewModel.searchText.lowercased()
+        
+        var filtered = Array(viewModel.wines)
+        
+        // Apply basic text search if not empty
+        if !searchText.isEmpty {
+            filtered = filtered.filter { wine in
+                wineMatchesSearch(wine: wine, searchTerm: searchText)
             }
         }
+        
+        // Apply advanced search criteria if any are active
+        if advancedSearchCriteria.hasActiveCriteria() {
+            filtered = filtered.filter { wine in
+                wineMatchesAdvancedCriteria(wine: wine, criteria: advancedSearchCriteria)
+            }
+        }
+        
+        return filtered
     }
     
     private var totalQuantity: Int {
         filteredWines.reduce(0) { $0 + Int($1.quantity) }
     }
     
+    private func wineMatchesSearch(wine: Wine, searchTerm: String) -> Bool {
+        // Check each field individually to avoid complex array operations
+        if let name = wine.name, name.lowercased().contains(searchTerm) { return true }
+        if let producer = wine.producer, producer.lowercased().contains(searchTerm) { return true }
+        if let vintage = wine.vintage, vintage.lowercased().contains(searchTerm) { return true }
+        if let alcohol = wine.alcohol, alcohol.lowercased().contains(searchTerm) { return true }
+        if let grapes = wine.grapes, grapes.lowercased().contains(searchTerm) { return true }
+        if let category = wine.category, category.lowercased().contains(searchTerm) { return true }
+        if let country = wine.country, country.lowercased().contains(searchTerm) { return true }
+        if let region = wine.region, region.lowercased().contains(searchTerm) { return true }
+        if let subregion = wine.subregion, subregion.lowercased().contains(searchTerm) { return true }
+        if let type = wine.type, type.lowercased().contains(searchTerm) { return true }
+        if let bottleSize = wine.bottleSize, bottleSize.lowercased().contains(searchTerm) { return true }
+        if let readyYear = wine.readyToTrinkYear, readyYear.lowercased().contains(searchTerm) { return true }
+        if let bestYear = wine.bestBeforeYear, bestYear.lowercased().contains(searchTerm) { return true }
+        if let location = wine.storageLocation, location.lowercased().contains(searchTerm) { return true }
+        if let purchasedFrom = wine.purchasedFrom, purchasedFrom.lowercased().contains(searchTerm) { return true }
+        if let price = wine.price?.stringValue, price.contains(searchTerm) { return true }
+        return false
+    }
+    
+    private func wineMatchesAdvancedCriteria(wine: Wine, criteria: AdvancedSearchCriteria) -> Bool {
+        // Text field filters (contains)
+        if !criteria.name.isEmpty {
+            guard let name = wine.name, name.lowercased().contains(criteria.name.lowercased()) else { return false }
+        }
+        
+        if !criteria.producer.isEmpty {
+            guard let producer = wine.producer, producer.lowercased().contains(criteria.producer.lowercased()) else { return false }
+        }
+        
+        if !criteria.grapes.isEmpty {
+            guard let grapes = wine.grapes, grapes.lowercased().contains(criteria.grapes.lowercased()) else { return false }
+        }
+        
+        if !criteria.storageLocation.isEmpty {
+            guard let location = wine.storageLocation, location.lowercased().contains(criteria.storageLocation.lowercased()) else { return false }
+        }
+        
+        if !criteria.purchasedFrom.isEmpty {
+            guard let purchasedFrom = wine.purchasedFrom, purchasedFrom.lowercased().contains(criteria.purchasedFrom.lowercased()) else { return false }
+        }
+        
+        // Exact match filters
+        if !criteria.category.isEmpty {
+            guard wine.category == criteria.category else { return false }
+        }
+        
+        if !criteria.country.isEmpty {
+            guard wine.country == criteria.country else { return false }
+        }
+        
+        if !criteria.region.isEmpty {
+            guard wine.region == criteria.region else { return false }
+        }
+        
+        if !criteria.subregion.isEmpty {
+            guard wine.subregion == criteria.subregion else { return false }
+        }
+        
+        if !criteria.type.isEmpty {
+            guard wine.type == criteria.type else { return false }
+        }
+        
+        // Range filters
+        if !criteria.vintageFrom.isEmpty || !criteria.vintageTo.isEmpty {
+            guard let vintage = wine.vintage, let vintageYear = Int(vintage) else { return false }
+            
+            if !criteria.vintageFrom.isEmpty, let fromYear = Int(criteria.vintageFrom) {
+                guard vintageYear >= fromYear else { return false }
+            }
+            
+            if !criteria.vintageTo.isEmpty, let toYear = Int(criteria.vintageTo) {
+                guard vintageYear <= toYear else { return false }
+            }
+        }
+        
+        if !criteria.alcoholFrom.isEmpty || !criteria.alcoholTo.isEmpty {
+            guard let alcoholStr = wine.alcohol, let alcoholValue = Double(alcoholStr.replacingOccurrences(of: "%", with: "")) else { return false }
+            
+            if !criteria.alcoholFrom.isEmpty, let fromAlcohol = Double(criteria.alcoholFrom) {
+                guard alcoholValue >= fromAlcohol else { return false }
+            }
+            
+            if !criteria.alcoholTo.isEmpty, let toAlcohol = Double(criteria.alcoholTo) {
+                guard alcoholValue <= toAlcohol else { return false }
+            }
+        }
+        
+        if !criteria.priceFrom.isEmpty || !criteria.priceTo.isEmpty {
+            guard let price = wine.price, price != 0 else { return false }
+            let priceValue = price.doubleValue
+            
+            if !criteria.priceFrom.isEmpty, let fromPrice = Double(criteria.priceFrom) {
+                guard priceValue >= fromPrice else { return false }
+            }
+            
+            if !criteria.priceTo.isEmpty, let toPrice = Double(criteria.priceTo) {
+                guard priceValue <= toPrice else { return false }
+            }
+        }
+        
+        if !criteria.quantityFrom.isEmpty || !criteria.quantityTo.isEmpty {
+            let quantity = Int(wine.quantity)
+            
+            if !criteria.quantityFrom.isEmpty, let fromQty = Int(criteria.quantityFrom) {
+                guard quantity >= fromQty else { return false }
+            }
+            
+            if !criteria.quantityTo.isEmpty, let toQty = Int(criteria.quantityTo) {
+                guard quantity <= toQty else { return false }
+            }
+        }
+        
+        if !criteria.readyToTrinkFrom.isEmpty || !criteria.readyToTrinkTo.isEmpty {
+            guard let readyYear = wine.readyToTrinkYear, let readyYearInt = Int(readyYear) else { return false }
+            
+            if !criteria.readyToTrinkFrom.isEmpty, let fromYear = Int(criteria.readyToTrinkFrom) {
+                guard readyYearInt >= fromYear else { return false }
+            }
+            
+            if !criteria.readyToTrinkTo.isEmpty, let toYear = Int(criteria.readyToTrinkTo) {
+                guard readyYearInt <= toYear else { return false }
+            }
+        }
+        
+        if !criteria.bestBeforeFrom.isEmpty || !criteria.bestBeforeTo.isEmpty {
+            guard let bestYear = wine.bestBeforeYear, let bestYearInt = Int(bestYear) else { return false }
+            
+            if !criteria.bestBeforeFrom.isEmpty, let fromYear = Int(criteria.bestBeforeFrom) {
+                guard bestYearInt >= fromYear else { return false }
+            }
+            
+            if !criteria.bestBeforeTo.isEmpty, let toYear = Int(criteria.bestBeforeTo) {
+                guard bestYearInt <= toYear else { return false }
+            }
+        }
+        
+        return true
+    }
+
     // Helper function to get current date in dd.mm.yyyy format
     private var currentDateString: String {
         let formatter = DateFormatter()

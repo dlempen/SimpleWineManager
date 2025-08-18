@@ -61,6 +61,7 @@ struct ContentView: View {
     @State private var showingSettings = false
     @State private var showingPrintView = false
     @State private var showingAdvancedSearch = false
+    @State private var showingHistory = false
     
     // Use standard @FetchRequest instead of a State variable
     @FetchRequest private var wines: FetchedResults<Wine>
@@ -384,7 +385,7 @@ struct ContentView: View {
                 SettingsView(settings: settings, context: viewContext)
             }
             .sheet(isPresented: $showingPrintView) {
-                PrintView(viewModel: viewModel)
+                PrintView(viewModel: viewModel, advancedSearchCriteria: advancedSearchCriteria)
                     .environmentObject(settings)
             }
             .sheet(isPresented: $showingAdvancedSearch) {
@@ -392,6 +393,9 @@ struct ContentView: View {
                     AdvancedSearchView(criteria: advancedSearchCriteria)
                         .environmentObject(settings)
                 }
+            }
+            .sheet(isPresented: $showingHistory) {
+                WineHistoryView(historyService: historyService)
             }
         }
         .environmentObject(settings)
@@ -452,6 +456,22 @@ struct ContentView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
             .background(Color(.systemBackground))
+            
+            // Show advanced filters active indicator with clear button
+            if advancedSearchCriteria.hasActiveCriteria() {
+                HStack {
+                    Text("Advanced filters active")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                    
+                    Button("Clear") {
+                        advancedSearchCriteria.reset()
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                }
+                .padding(.horizontal)
+            }
             
             totalsDisplay
         }
@@ -547,6 +567,11 @@ struct ContentView: View {
                 showingPrintView = true
             }) {
                 Image(systemName: "printer")
+            }
+            Button(action: {
+                showingHistory = true
+            }) {
+                Image(systemName: "clock")
             }
         }
     }

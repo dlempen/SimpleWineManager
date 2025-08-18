@@ -684,10 +684,20 @@ struct HistoryStatisticsView: View {
         // Determine end date based on timeframe
         let endDate: Date
         if selectedTimeframe == .all {
-            // For "All" timeframe, use the last history entry date or now if no history
-            endDate = allTimestamps.last ?? now
+            // For "All" timeframe, always extend to today to show complete timeline
+            endDate = now
         } else {
             endDate = now
+        }
+        
+        // Get consumed entries and filter efficiently
+        let consumedHistory = allHistory.filter { entry in
+            guard entry.timestamp != nil else { return false }
+            return entry.actionType == .consumed
+        }
+        
+        let history = consumedHistory.filter { entry in
+            return entry.timestamp != nil && entry.timestamp! >= cutoffDate && entry.timestamp! <= endDate
         }
         
         // Optimize data points based on timeframe
@@ -711,17 +721,18 @@ struct HistoryStatisticsView: View {
             component = .weekOfYear
             dateFormat = "yyyy-ww"
         case .all:
-            interval = 1
-            component = .month
-            dateFormat = "yyyy-MM"
-        }
-        
-        // Get consumed entries and filter efficiently
-        let history = allHistory
-            .filter { entry in
-                guard let timestamp = entry.timestamp else { return false }
-                return timestamp >= cutoffDate && timestamp <= endDate && entry.actionType == .consumed
+            // For "All" timeframe, use daily granularity if there are consumption events,
+            // otherwise fall back to monthly
+            if !consumedHistory.isEmpty {
+                interval = 1
+                component = .day
+                dateFormat = "yyyy-MM-dd"
+            } else {
+                interval = 1
+                component = .month
+                dateFormat = "yyyy-MM"
             }
+        }
         
         // For "Today" view, ensure we have at least some data points even if no consumption today
         if selectedTimeframe == .today && history.isEmpty {
@@ -781,8 +792,10 @@ struct HistoryStatisticsView: View {
         }
         
         // Special handling for "All" timeframe to ensure we have enough data points
-        if selectedTimeframe == .all && data.count < 2 && !allTimestamps.isEmpty {
-            // If we only have one data point for "All" timeframe, create additional points to show progression
+        // Only apply if there are no actual consumption events to show
+        let hasConsumptionEvents = !history.isEmpty
+        if selectedTimeframe == .all && data.count < 2 && !allTimestamps.isEmpty && !hasConsumptionEvents {
+            // If we only have one data point for "All" timeframe and no consumption events, create additional points to show progression
             let firstDate = allTimestamps.first!
             let lastDate = allTimestamps.last!
             
