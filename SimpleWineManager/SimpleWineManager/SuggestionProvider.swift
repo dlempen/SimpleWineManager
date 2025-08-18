@@ -6,11 +6,13 @@ import Combine
 class SuggestionProvider: ObservableObject {
     @Published var nameSuggestions: [String] = []
     @Published var producerSuggestions: [String] = []
+    @Published var grapesSuggestions: [String] = []
     @Published var locationSuggestions: [String] = []
     
     private var context: NSManagedObjectContext
     private var nameCancellable: AnyCancellable?
     private var producerCancellable: AnyCancellable?
+    private var grapesCancellable: AnyCancellable?
     private var locationCancellable: AnyCancellable?
     
     init(context: NSManagedObjectContext) {
@@ -48,6 +50,8 @@ class SuggestionProvider: ObservableObject {
                 nameSuggestions = Array(uniqueValues)
             case .producer:
                 producerSuggestions = Array(uniqueValues)
+            case .grapes:
+                grapesSuggestions = Array(uniqueValues)
             case .storageLocation:
                 locationSuggestions = Array(uniqueValues)
             }
@@ -62,6 +66,8 @@ class SuggestionProvider: ObservableObject {
             nameSuggestions = []
         case .producer:
             producerSuggestions = []
+        case .grapes:
+            grapesSuggestions = []
         case .storageLocation:
             locationSuggestions = []
         }
@@ -76,6 +82,7 @@ class SuggestionProvider: ObservableObject {
     enum FieldType: String {
         case name
         case producer
+        case grapes
         case storageLocation
     }
 }
@@ -135,6 +142,8 @@ struct AutocompleteTextField: View {
             return suggestionProvider.nameSuggestions
         case .producer:
             return suggestionProvider.producerSuggestions
+        case .grapes:
+            return suggestionProvider.grapesSuggestions
         case .storageLocation:
             return suggestionProvider.locationSuggestions
         }

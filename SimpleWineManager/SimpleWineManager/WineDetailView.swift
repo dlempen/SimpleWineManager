@@ -24,6 +24,7 @@ struct WineDetailView: View {
     @State private var editProducer: String = ""
     @State private var editVintage: String = ""
     @State private var editAlcohol: String = ""
+    @State private var editGrapes: String = ""
     @State private var editQuantity: Int = 1
     @State private var editCategory: String = ""
     @State private var editCountry: String = ""
@@ -52,6 +53,7 @@ struct WineDetailView: View {
         editProducer = wine.producer ?? ""
         editVintage = wine.vintage ?? ""
         editAlcohol = wine.alcohol ?? ""
+        editGrapes = wine.grapes ?? ""
         editQuantity = Int(wine.quantity)
         editCategory = wine.category ?? ""
         editCountry = wine.country ?? ""
@@ -233,6 +235,15 @@ struct WineDetailView: View {
                     Text("%")
                         .foregroundColor(.secondary)
                 }
+                
+                AutocompleteTextField(
+                    title: "Grapes",
+                    placeholder: "Grapes",
+                    text: $editGrapes,
+                    suggestionProvider: suggestionProvider,
+                    fieldType: .grapes,
+                    keyboardType: .default
+                )
                 
                 HStack {
                     Text("Price")
@@ -548,6 +559,9 @@ struct WineDetailView: View {
                 if let alcohol = wine.alcohol, !alcohol.isEmpty {
                     DetailRow(label: "Alcohol", value: "\(alcohol)%")
                 }
+                if let grapes = wine.grapes, !grapes.isEmpty {
+                    DetailRow(label: "Grapes", value: grapes)
+                }
                 DetailRow(label: "Quantity", value: "\(wine.quantity)")
                 if let category = wine.category, !category.isEmpty {
                     DetailRow(label: "Category", value: category)
@@ -637,6 +651,7 @@ struct WineDetailView: View {
         editProducer = wine.producer ?? ""
         editVintage = wine.vintage ?? ""
         editAlcohol = wine.alcohol ?? ""
+        editGrapes = wine.grapes ?? ""
         editQuantity = Int(wine.quantity)
         editCategory = wine.category ?? ""
         editCountry = wine.country ?? ""
@@ -691,6 +706,7 @@ struct WineDetailView: View {
         wine.producer = editProducer
         wine.vintage = editVintage
         wine.alcohol = editAlcohol
+        wine.grapes = editGrapes
         wine.quantity = Int16(editQuantity)
         wine.category = editCategory
         wine.country = editCountry

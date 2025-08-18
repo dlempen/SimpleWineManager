@@ -32,6 +32,7 @@ struct WineSelectionView: View {
                 let producer = wine.producer?.lowercased() ?? ""
                 let vintage = wine.vintage?.lowercased() ?? ""
                 let alcohol = wine.alcohol?.lowercased() ?? ""
+                let grapes = wine.grapes?.lowercased() ?? ""
                 let category = wine.category?.lowercased() ?? ""
                 let country = wine.country?.lowercased() ?? ""
                 let region = wine.region?.lowercased() ?? ""
@@ -49,6 +50,7 @@ struct WineSelectionView: View {
                        producer.contains(lowercasedSearch) ||
                        vintage.contains(lowercasedSearch) ||
                        alcohol.contains(lowercasedSearch) ||
+                       grapes.contains(lowercasedSearch) ||
                        category.contains(lowercasedSearch) ||
                        country.contains(lowercasedSearch) ||
                        region.contains(lowercasedSearch) ||

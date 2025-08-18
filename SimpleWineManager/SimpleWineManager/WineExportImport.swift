@@ -27,6 +27,7 @@ struct SharedWine: Codable, Identifiable {
     let producer: String?
     let vintage: String?
     let alcohol: String?
+    let grapes: String?
     let quantity: Int16
     let country: String?
     let region: String?
@@ -47,6 +48,7 @@ struct SharedWine: Codable, Identifiable {
         self.producer = wine.producer
         self.vintage = wine.vintage
         self.alcohol = wine.alcohol
+        self.grapes = wine.grapes
         self.quantity = wine.quantity
         self.country = wine.country
         self.region = wine.region
@@ -69,6 +71,7 @@ struct SharedWine: Codable, Identifiable {
         wine.producer = self.producer
         wine.vintage = self.vintage
         wine.alcohol = self.alcohol
+        wine.grapes = self.grapes
         wine.quantity = importQuantity ? self.quantity : 0
         wine.country = self.country
         wine.region = self.region

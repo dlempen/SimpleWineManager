@@ -38,10 +38,14 @@ struct PersistenceController {
             container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
         }
         
-        // Configure the persistent store for concurrent updates
+        // Configure the persistent store for concurrent updates and migrations
         let description = container.persistentStoreDescriptions.first
         description?.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
         description?.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+        
+        // Enable automatic lightweight migrations
+        description?.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
+        description?.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
         
         container.loadPersistentStores(completionHandler: { (storeDescription, error) in
             if let error = error as NSError? {

@@ -7,6 +7,7 @@
         <attribute name="backImageData" optional="YES" attributeType="Binary"/>
         <attribute name="name" optional="YES" attributeType="String"/>
         <attribute name="producer" optional="YES" attributeType="String"/>
+        <attribute name="grapes" optional="YES" attributeType="String"/>
         <attribute name="quantity" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
         <attribute name="vintage" optional="YES" attributeType="String"/>
         <attribute name="country" optional="YES" attributeType="String"/>

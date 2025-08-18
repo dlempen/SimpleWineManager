@@ -19,6 +19,7 @@ struct PrintView: View {
                 return (wine.name?.lowercased().contains(searchLower) ?? false) ||
                        (wine.producer?.lowercased().contains(searchLower) ?? false) ||
                        (wine.vintage?.lowercased().contains(searchLower) ?? false) ||
+                       (wine.grapes?.lowercased().contains(searchLower) ?? false) ||
                        (wine.country?.lowercased().contains(searchLower) ?? false) ||
                        (wine.region?.lowercased().contains(searchLower) ?? false) ||
                        (wine.subregion?.lowercased().contains(searchLower) ?? false) ||

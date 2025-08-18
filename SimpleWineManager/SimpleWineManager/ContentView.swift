@@ -7,14 +7,11 @@
 
 import SwiftUI
 import CoreData
-import Combine
 
 class WineListViewModel: ObservableObject {
     private var viewContext: NSManagedObjectContext
     @Published private(set) var lastRefresh = Date()
     @Published var searchText = ""
-    @Published var advancedSearchCriteria = AdvancedSearchCriteria()
-    private var cancellables = Set<AnyCancellable>()
     
     var wines: [Wine] {
         let request: NSFetchRequest<Wine> = Wine.fetchRequest()
@@ -41,15 +38,6 @@ class WineListViewModel: ObservableObject {
             selector: #selector(refreshData),
             name: NSNotification.Name("WineDataDidChange"),
             object: nil)
-        
-        // Listen for changes in advanced search criteria to trigger UI refresh
-        advancedSearchCriteria.objectWillChange
-            .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    self?.objectWillChange.send()
-                }
-            }
-            .store(in: &cancellables)
     }
     
     @objc func refreshData() {
@@ -60,7 +48,6 @@ class WineListViewModel: ObservableObject {
     
     deinit {
         NotificationCenter.default.removeObserver(self)
-        cancellables.removeAll()
     }
 }
 
@@ -68,12 +55,12 @@ struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var viewModel: WineListViewModel
     @StateObject private var settings = SettingsStore()
-    @StateObject private var historyService: WineHistoryService
+    @StateObject private var historyService = WineHistoryService(context: PersistenceController.shared.container.viewContext)
+    @StateObject private var advancedSearchCriteria = AdvancedSearchCriteria()
     @State private var showingAddWine = false
     @State private var showingSettings = false
     @State private var showingPrintView = false
     @State private var showingAdvancedSearch = false
-    @State private var showingHistory = false
     
     // Use standard @FetchRequest instead of a State variable
     @FetchRequest private var wines: FetchedResults<Wine>
@@ -81,7 +68,6 @@ struct ContentView: View {
     init(context: NSManagedObjectContext? = nil) {
         let context = context ?? PersistenceController.shared.container.viewContext
         _viewModel = StateObject(wrappedValue: WineListViewModel(context: context))
-        _historyService = StateObject(wrappedValue: WineHistoryService(context: context))
         
         // Initialize the FetchRequest with default sorting
         _wines = FetchRequest(
@@ -176,248 +162,171 @@ struct ContentView: View {
     }
     
     var filteredWines: [Wine] {
-        let wineArray = Array(wines)
+        let searchText = viewModel.searchText.lowercased()
         
-        // Apply basic search text filter first
-        let basicFiltered: [Wine]
-        if viewModel.searchText.isEmpty {
-            basicFiltered = wineArray
-        } else {
-            let lowercasedSearch = viewModel.searchText.lowercased()
-            basicFiltered = wineArray.filter { wine in
-                let name = wine.name?.lowercased() ?? ""
-                let producer = wine.producer?.lowercased() ?? ""
-                let vintage = wine.vintage?.lowercased() ?? ""
-                let alcohol = wine.alcohol?.lowercased() ?? ""
-                let category = wine.category?.lowercased() ?? ""
-                let country = wine.country?.lowercased() ?? ""
-                let region = wine.region?.lowercased() ?? ""
-                let subregion = wine.subregion?.lowercased() ?? ""
-                let type = wine.type?.lowercased() ?? ""
-                let bottleSize = wine.bottleSize?.lowercased() ?? ""
-                let readyToTrinkYear = wine.readyToTrinkYear?.lowercased() ?? ""
-                let bestBeforeYear = wine.bestBeforeYear?.lowercased() ?? ""
-                let storageLocation = wine.storageLocation?.lowercased() ?? ""
-                let remarks = wine.remarks?.lowercased() ?? ""
-                let wineRating = wine.wineRating?.lowercased() ?? ""
-                let price = wine.price?.stringValue ?? ""
-                
-                return name.contains(lowercasedSearch) ||
-                       producer.contains(lowercasedSearch) ||
-                       vintage.contains(lowercasedSearch) ||
-                       alcohol.contains(lowercasedSearch) ||
-                       category.contains(lowercasedSearch) ||
-                       country.contains(lowercasedSearch) ||
-                       region.contains(lowercasedSearch) ||
-                       subregion.contains(lowercasedSearch) ||
-                       type.contains(lowercasedSearch) ||
-                       bottleSize.contains(lowercasedSearch) ||
-                       readyToTrinkYear.contains(lowercasedSearch) ||
-                       bestBeforeYear.contains(lowercasedSearch) ||
-                       storageLocation.contains(lowercasedSearch) ||
-                       remarks.contains(lowercasedSearch) ||
-                       wineRating.contains(lowercasedSearch) ||
-                       price.contains(lowercasedSearch)
+        var filtered = Array(wines)
+        
+        // Apply basic text search if not empty
+        if !searchText.isEmpty {
+            filtered = filtered.filter { wine in
+                wineMatchesSearch(wine: wine, searchTerm: searchText)
             }
         }
         
-        // Apply advanced search criteria
-        let criteria = viewModel.advancedSearchCriteria
-        if !criteria.hasActiveCriteria() {
-            return basicFiltered
+        // Apply advanced search criteria if any are active
+        if advancedSearchCriteria.hasActiveCriteria() {
+            filtered = filtered.filter { wine in
+                wineMatchesAdvancedCriteria(wine: wine, criteria: advancedSearchCriteria)
+            }
         }
         
-        return basicFiltered.filter { wine in
-            // String field filters (case-insensitive contains)
-            if !criteria.name.isEmpty {
-                let wineName = wine.name?.lowercased() ?? ""
-                if !wineName.contains(criteria.name.lowercased()) {
-                    return false
-                }
-            }
-            
-            if !criteria.producer.isEmpty {
-                let wineProducer = wine.producer?.lowercased() ?? ""
-                if !wineProducer.contains(criteria.producer.lowercased()) {
-                    return false
-                }
-            }
-            
-            if !criteria.category.isEmpty {
-                if wine.category != criteria.category {
-                    return false
-                }
-            }
-            
-            if !criteria.country.isEmpty {
-                if wine.country != criteria.country {
-                    return false
-                }
-            }
-            
-            if !criteria.region.isEmpty {
-                if wine.region != criteria.region {
-                    return false
-                }
-            }
-            
-            if !criteria.subregion.isEmpty {
-                if wine.subregion != criteria.subregion {
-                    return false
-                }
-            }
-            
-            if !criteria.type.isEmpty {
-                if wine.type != criteria.type {
-                    return false
-                }
-            }
-            
-            if !criteria.storageLocation.isEmpty {
-                let wineStorage = wine.storageLocation?.lowercased() ?? ""
-                if !wineStorage.contains(criteria.storageLocation.lowercased()) {
-                    return false
-                }
-            }
-            
-            // Vintage range filter
-            if !criteria.vintageFrom.isEmpty || !criteria.vintageTo.isEmpty {
-                guard let vintageString = wine.vintage,
-                      let vintage = Int(vintageString) else {
-                    return false
-                }
-                
-                if !criteria.vintageFrom.isEmpty {
-                    if let fromYear = Int(criteria.vintageFrom), vintage < fromYear {
-                        return false
-                    }
-                }
-                
-                if !criteria.vintageTo.isEmpty {
-                    if let toYear = Int(criteria.vintageTo), vintage > toYear {
-                        return false
-                    }
-                }
-            }
-            
-            // Alcohol range filter
-            if !criteria.alcoholFrom.isEmpty || !criteria.alcoholTo.isEmpty {
-                guard let alcoholString = wine.alcohol?.replacingOccurrences(of: "%", with: ""),
-                      let alcohol = Double(alcoholString) else {
-                    return false
-                }
-                
-                if !criteria.alcoholFrom.isEmpty {
-                    if let fromAlcohol = Double(criteria.alcoholFrom), alcohol < fromAlcohol {
-                        return false
-                    }
-                }
-                
-                if !criteria.alcoholTo.isEmpty {
-                    if let toAlcohol = Double(criteria.alcoholTo), alcohol > toAlcohol {
-                        return false
-                    }
-                }
-            }
-            
-            // Price range filter
-            if !criteria.priceFrom.isEmpty || !criteria.priceTo.isEmpty {
-                guard let priceDecimal = wine.price,
-                      let price = Double(priceDecimal.stringValue) else {
-                    return false
-                }
-                
-                if !criteria.priceFrom.isEmpty {
-                    if let fromPrice = Double(criteria.priceFrom), price < fromPrice {
-                        return false
-                    }
-                }
-                
-                if !criteria.priceTo.isEmpty {
-                    if let toPrice = Double(criteria.priceTo), price > toPrice {
-                        return false
-                    }
-                }
-            }
-            
-            // Quantity range filter
-            if !criteria.quantityFrom.isEmpty || !criteria.quantityTo.isEmpty {
-                let quantity = Int(wine.quantity)
-                
-                if !criteria.quantityFrom.isEmpty {
-                    if let fromQuantity = Int(criteria.quantityFrom), quantity < fromQuantity {
-                        return false
-                    }
-                }
-                
-                if !criteria.quantityTo.isEmpty {
-                    if let toQuantity = Int(criteria.quantityTo), quantity > toQuantity {
-                        return false
-                    }
-                }
-            }
-            
-            // Ready to drink range filter
-            if !criteria.readyToTrinkFrom.isEmpty || !criteria.readyToTrinkTo.isEmpty {
-                guard let readyString = wine.readyToTrinkYear,
-                      let readyYear = Int(readyString) else {
-                    return false
-                }
-                
-                if !criteria.readyToTrinkFrom.isEmpty {
-                    if let fromYear = Int(criteria.readyToTrinkFrom), readyYear < fromYear {
-                        return false
-                    }
-                }
-                
-                if !criteria.readyToTrinkTo.isEmpty {
-                    if let toYear = Int(criteria.readyToTrinkTo), readyYear > toYear {
-                        return false
-                    }
-                }
-            }
-            
-            // Best before range filter
-            if !criteria.bestBeforeFrom.isEmpty || !criteria.bestBeforeTo.isEmpty {
-                guard let bestBeforeString = wine.bestBeforeYear,
-                      let bestBeforeYear = Int(bestBeforeString) else {
-                    return false
-                }
-                
-                if !criteria.bestBeforeFrom.isEmpty {
-                    if let fromYear = Int(criteria.bestBeforeFrom), bestBeforeYear < fromYear {
-                        return false
-                    }
-                }
-                
-                if !criteria.bestBeforeTo.isEmpty {
-                    if let toYear = Int(criteria.bestBeforeTo), bestBeforeYear > toYear {
-                        return false
-                    }
-                }
-            }
-            
-            // Bottle size filter
-            if !criteria.bottleSizeFilter.isEmpty {
-                guard let bottleSize = wine.bottleSize else {
-                    return false
-                }
-                
-                // Extract numeric value from bottle size
-                let numericString = bottleSize.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
-                if let bottleSizeValue = Double(numericString) {
-                    // Convert filter value to ml if needed based on settings
-                    let filterInMl = settings.convertToMilliliters(criteria.bottleSizeFilter, from: settings.bottleSizeUnit)
-                    if let filterMl = Double(filterInMl.replacingOccurrences(of: "ml", with: "")) {
-                        if abs(bottleSizeValue - filterMl) > 1.0 { // Allow small tolerance
-                            return false
-                        }
-                    }
-                }
-            }
-            
-            return true
+        return filtered
+    }
+    
+    private func wineMatchesSearch(wine: Wine, searchTerm: String) -> Bool {
+        // Check each field individually to avoid complex array operations
+        if let name = wine.name, name.lowercased().contains(searchTerm) { return true }
+        if let producer = wine.producer, producer.lowercased().contains(searchTerm) { return true }
+        if let vintage = wine.vintage, vintage.lowercased().contains(searchTerm) { return true }
+        if let alcohol = wine.alcohol, alcohol.lowercased().contains(searchTerm) { return true }
+        if let grapes = wine.grapes, grapes.lowercased().contains(searchTerm) { return true }
+        if let category = wine.category, category.lowercased().contains(searchTerm) { return true }
+        if let country = wine.country, country.lowercased().contains(searchTerm) { return true }
+        if let region = wine.region, region.lowercased().contains(searchTerm) { return true }
+        if let subregion = wine.subregion, subregion.lowercased().contains(searchTerm) { return true }
+        if let type = wine.type, type.lowercased().contains(searchTerm) { return true }
+        if let bottleSize = wine.bottleSize, bottleSize.lowercased().contains(searchTerm) { return true }
+        if let readyYear = wine.readyToTrinkYear, readyYear.lowercased().contains(searchTerm) { return true }
+        if let bestYear = wine.bestBeforeYear, bestYear.lowercased().contains(searchTerm) { return true }
+        if let location = wine.storageLocation, location.lowercased().contains(searchTerm) { return true }
+        if let price = wine.price?.stringValue, price.contains(searchTerm) { return true }
+        return false
+    }
+    
+    private func wineMatchesAdvancedCriteria(wine: Wine, criteria: AdvancedSearchCriteria) -> Bool {
+        // Text field filters (contains)
+        if !criteria.name.isEmpty {
+            guard let name = wine.name, name.lowercased().contains(criteria.name.lowercased()) else { return false }
         }
+        
+        if !criteria.producer.isEmpty {
+            guard let producer = wine.producer, producer.lowercased().contains(criteria.producer.lowercased()) else { return false }
+        }
+        
+        if !criteria.grapes.isEmpty {
+            guard let grapes = wine.grapes, grapes.lowercased().contains(criteria.grapes.lowercased()) else { return false }
+        }
+        
+        if !criteria.storageLocation.isEmpty {
+            guard let location = wine.storageLocation, location.lowercased().contains(criteria.storageLocation.lowercased()) else { return false }
+        }
+        
+        // Exact match filters
+        if !criteria.category.isEmpty {
+            guard wine.category == criteria.category else { return false }
+        }
+        
+        if !criteria.country.isEmpty {
+            guard wine.country == criteria.country else { return false }
+        }
+        
+        if !criteria.region.isEmpty {
+            guard wine.region == criteria.region else { return false }
+        }
+        
+        if !criteria.subregion.isEmpty {
+            guard wine.subregion == criteria.subregion else { return false }
+        }
+        
+        if !criteria.type.isEmpty {
+            guard wine.type == criteria.type else { return false }
+        }
+        
+        // Range filters
+        if !criteria.vintageFrom.isEmpty || !criteria.vintageTo.isEmpty {
+            guard let vintage = wine.vintage, let vintageYear = Int(vintage) else { return false }
+            
+            if !criteria.vintageFrom.isEmpty, let fromYear = Int(criteria.vintageFrom) {
+                guard vintageYear >= fromYear else { return false }
+            }
+            
+            if !criteria.vintageTo.isEmpty, let toYear = Int(criteria.vintageTo) {
+                guard vintageYear <= toYear else { return false }
+            }
+        }
+        
+        if !criteria.alcoholFrom.isEmpty || !criteria.alcoholTo.isEmpty {
+            guard let alcoholStr = wine.alcohol, let alcoholValue = Double(alcoholStr.replacingOccurrences(of: "%", with: "")) else { return false }
+            
+            if !criteria.alcoholFrom.isEmpty, let fromAlcohol = Double(criteria.alcoholFrom) {
+                guard alcoholValue >= fromAlcohol else { return false }
+            }
+            
+            if !criteria.alcoholTo.isEmpty, let toAlcohol = Double(criteria.alcoholTo) {
+                guard alcoholValue <= toAlcohol else { return false }
+            }
+        }
+        
+        if !criteria.priceFrom.isEmpty || !criteria.priceTo.isEmpty {
+            guard let price = wine.price, price != 0 else { return false }
+            let priceValue = price.doubleValue
+            
+            if !criteria.priceFrom.isEmpty, let fromPrice = Double(criteria.priceFrom) {
+                guard priceValue >= fromPrice else { return false }
+            }
+            
+            if !criteria.priceTo.isEmpty, let toPrice = Double(criteria.priceTo) {
+                guard priceValue <= toPrice else { return false }
+            }
+        }
+        
+        if !criteria.quantityFrom.isEmpty || !criteria.quantityTo.isEmpty {
+            let quantity = Int(wine.quantity)
+            
+            if !criteria.quantityFrom.isEmpty, let fromQty = Int(criteria.quantityFrom) {
+                guard quantity >= fromQty else { return false }
+            }
+            
+            if !criteria.quantityTo.isEmpty, let toQty = Int(criteria.quantityTo) {
+                guard quantity <= toQty else { return false }
+            }
+        }
+        
+        if !criteria.readyToTrinkFrom.isEmpty || !criteria.readyToTrinkTo.isEmpty {
+            guard let readyYear = wine.readyToTrinkYear, let readyYearInt = Int(readyYear) else { return false }
+            
+            if !criteria.readyToTrinkFrom.isEmpty, let fromYear = Int(criteria.readyToTrinkFrom) {
+                guard readyYearInt >= fromYear else { return false }
+            }
+            
+            if !criteria.readyToTrinkTo.isEmpty, let toYear = Int(criteria.readyToTrinkTo) {
+                guard readyYearInt <= toYear else { return false }
+            }
+        }
+        
+        if !criteria.bestBeforeFrom.isEmpty || !criteria.bestBeforeTo.isEmpty {
+            guard let bestYear = wine.bestBeforeYear, let bestYearInt = Int(bestYear) else { return false }
+            
+            if !criteria.bestBeforeFrom.isEmpty, let fromYear = Int(criteria.bestBeforeFrom) {
+                guard bestYearInt >= fromYear else { return false }
+            }
+            
+            if !criteria.bestBeforeTo.isEmpty, let toYear = Int(criteria.bestBeforeTo) {
+                guard bestYearInt <= toYear else { return false }
+            }
+        }
+        
+        if !criteria.bottleSizeFilter.isEmpty {
+            guard let bottleSize = wine.bottleSize else { return false }
+            let numericString = bottleSize.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
+            if let bottleSizeValue = Double(numericString), let filterValue = Double(criteria.bottleSizeFilter) {
+                guard bottleSizeValue == filterValue else { return false }
+            } else {
+                return false
+            }
+        }
+        
+        return true
     }
 
     var totalQuantity: Int {
@@ -446,183 +355,18 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Custom Title Header
-                HStack {
-                    Image("AppIconImage")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 32, height: 32)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    
-                    Text("Simple Wine Manager")
-                        .font(.system(size: 100, weight: .bold, design: .default))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(height: 44)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(.systemBackground))
-                
-                // Search Bar and Total Quantity
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        TextField("Search wines...", text: $viewModel.searchText)
-                            .textFieldStyle(.roundedBorder)
-                        
-                        Button(action: {
-                            showingAdvancedSearch = true
-                        }) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(viewModel.advancedSearchCriteria.hasActiveCriteria() ? .accentColor : .secondary)
-                                .font(.system(size: 16, weight: viewModel.advancedSearchCriteria.hasActiveCriteria() ? .bold : .regular))
-                                .frame(width: 32, height: 32)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(viewModel.advancedSearchCriteria.hasActiveCriteria() ? Color.accentColor.opacity(0.1) : Color.clear)
-                                        .strokeBorder(
-                                            viewModel.advancedSearchCriteria.hasActiveCriteria() ? Color.accentColor : Color.secondary.opacity(0.3),
-                                            lineWidth: 1
-                                        )
-                                )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemBackground))
-                    
-                    // Show active advanced search indicator
-                    if viewModel.advancedSearchCriteria.hasActiveCriteria() {
-                        HStack {
-                            Text("Advanced filters active")
-                                .font(.caption)
-                                .foregroundColor(.accentColor)
-                            
-                            Button("Clear") {
-                                viewModel.advancedSearchCriteria.reset()
-                            }
-                            .font(.caption)
-                            .foregroundColor(.accentColor)
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    // Total Quantity aligned with wine item quantities
-                    HStack {
-                        Text("Total Qty: \(totalQuantity)")
-                        if totalBottleSize > 0 {
-                            Text("•")
-                            Text(settings.getDisplayBottleSize("\(Int(totalBottleSize))ml"))
-                        }
-                        if totalPrice > 0 {
-                            Text("•")
-                            Text("\(totalPrice) \(settings.currencySymbol)")
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal)
-                }
-                
-                // Wine List with hierarchical sections
-                List {
-                    ForEach(Array(groupedWines().enumerated()), id: \.offset) { index, group in
-                        if let wine = group.wine {
-                            // Display single wine
-                            let wineDetail = WineDetailView(wine: wine).environmentObject(settings)
-                            let wineId = "\(wine.id?.uuidString ?? "")-\(wine.quantity)-\(viewModel.lastRefresh)"
-                            
-                            NavigationLink(destination: wineDetail) {
-                                WineRowView(wine: wine)
-                            }
-                            .id(wineId)
-                            .swipeActions(edge: .leading) {
-                                if wine.quantity > 0 {
-                                    Button("Consume") {
-                                        // Add haptic feedback
-                                        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-                                        impactFeedback.impactOccurred()
-                                        
-                                        consumeWine(wine)
-                                    }
-                                    .tint(.green)
-                                }
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button("Delete", role: .destructive) {
-                                    deleteWine(wine)
-                                }
-                            }
-                            .listRowSeparator(.visible)
-                            .deleteDisabled(false)
-                        } else if !group.title.isEmpty {
-                            // Display section title with custom separator
-                            let fontSize = group.level == 0 ? 28.0 : 22.0
-                            let fontWeight: Font.Weight = group.level == 0 ? .bold : .regular
-                            let topPadding = group.level == 0 ? 16.0 : 8.0
-                            let textColor = group.level == 0 ? Color.primary : Color.secondary
-                            
-                            VStack(spacing: 0) {
-                                Text(formatSectionTitle(group.title))
-                                    .font(.system(size: fontSize))
-                                    .fontWeight(fontWeight)
-                                    .padding(.top, topPadding)
-                                    .padding(.bottom, 4)
-                                    .foregroundStyle(textColor)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal)
-                                
-                                // Add very thin separator line after title if next item is a wine
-                                if shouldShowSeparatorAfterTitle(at: index, in: groupedWines()) {
-                                    Divider()
-                                        .padding(.horizontal, 16)
-                                        .opacity(0.6)
-                                }
-                            }
-                            .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden)
-                            .deleteDisabled(true)
-                        }
-                    }
-                    .onDelete(perform: deleteWinesFromList)
-                }
-                .listStyle(.plain)
-                .listStyle(.plain)
-                .refreshable {
-                    viewContext.rollback() // Discard any pending changes
-                    viewModel.refreshData()
-                }
+                titleHeader
+                searchAndTotalsSection
+                wineListSection
             }
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle("")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    HStack {
-                        Button(action: {
-                            showingSettings = true
-                        }) {
-                            Image(systemName: "gear")
-                        }
-                        Button(action: {
-                            showingPrintView = true
-                        }) {
-                            Image(systemName: "printer")
-                        }
-                        Button(action: {
-                            showingHistory = true
-                        }) {
-                            Image(systemName: "clock")
-                        }
-                    }
+                    leadingToolbarButtons
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingAddWine = true
-                    }) {
-                        Label("Add Wine", systemImage: "plus")
-                    }
+                    addWineButton
                 }
             }
             .sheet(isPresented: $showingAddWine) {
@@ -639,11 +383,10 @@ struct ContentView: View {
                     .environmentObject(settings)
             }
             .sheet(isPresented: $showingAdvancedSearch) {
-                AdvancedSearchView(criteria: viewModel.advancedSearchCriteria)
-                    .environmentObject(settings)
-            }
-            .sheet(isPresented: $showingHistory) {
-                WineHistoryView(historyService: historyService)
+                NavigationStack {
+                    AdvancedSearchView(criteria: advancedSearchCriteria)
+                        .environmentObject(settings)
+                }
             }
         }
         .environmentObject(settings)
@@ -662,12 +405,157 @@ struct ContentView: View {
             updateSortDescriptors()
         }
     }
+    
+    // MARK: - Subviews
+    
+    private var titleHeader: some View {
+        HStack {
+            Image("AppIconImage")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 32, height: 32)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            
+            Text("Simple Wine Manager")
+                .font(.system(size: 100, weight: .bold, design: .default))
+                .lineLimit(1)
+                .minimumScaleFactor(0.1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(height: 44)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color(.systemBackground))
+    }
+    
+    private var searchAndTotalsSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                TextField("Search wines...", text: $viewModel.searchText)
+                    .textFieldStyle(.roundedBorder)
+                
+                Button(action: {
+                    showingAdvancedSearch = true
+                }) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.primary)
+                        .padding(8)
+                        .background(Color(.systemGray6))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(Color(.systemBackground))
+            
+            totalsDisplay
+        }
+    }
+    
+    private var totalsDisplay: some View {
+        HStack {
+            Text("Total Qty: \(totalQuantity)")
+            if totalBottleSize > 0 {
+                Text("•")
+                Text(settings.getDisplayBottleSize("\(Int(totalBottleSize))ml"))
+            }
+            if totalPrice > 0 {
+                Text("•")
+                Text("\(totalPrice) \(settings.currencySymbol)")
+            }
+        }
+        .font(.caption)
+        .foregroundColor(.secondary)
+        .padding(.horizontal)
+    }
+    
+    private var wineListSection: some View {
+        List {
+            ForEach(Array(groupedWines().enumerated()), id: \.offset) { index, group in
+                if let wine = group.wine {
+                    wineRowSection(wine: wine)
+                } else if !group.title.isEmpty {
+                    sectionTitleView(group: group, index: index)
+                }
+            }
+            .onDelete(perform: deleteWinesFromList)
+        }
+        .listStyle(.plain)
+        .refreshable {
+            viewContext.rollback() // Discard any pending changes
+            viewModel.refreshData()
+        }
+    }
+    
+    private func wineRowSection(wine: Wine) -> some View {
+        let wineDetail = WineDetailView(wine: wine).environmentObject(settings)
+        let wineId = "\(wine.id?.uuidString ?? "")-\(wine.quantity)-\(viewModel.lastRefresh)"
+        
+        return NavigationLink(destination: wineDetail) {
+            WineRowView(wine: wine)
+        }
+        .id(wineId)
+        .swipeActions(edge: .trailing) {
+            Button("Delete", role: .destructive) {
+                deleteWine(wine)
+            }
+        }
+        .listRowSeparator(.visible)
+        .deleteDisabled(false)
+    }
+    
+    private func sectionTitleView(group: (level: Int, title: String, wine: Wine?), index: Int) -> some View {
+        let fontSize = group.level == 0 ? 28.0 : 22.0
+        let fontWeight: Font.Weight = group.level == 0 ? .bold : .regular
+        let topPadding = group.level == 0 ? 16.0 : 8.0
+        let textColor = group.level == 0 ? Color.primary : Color.secondary
+        
+        return VStack(spacing: 0) {
+            Text(formatSectionTitle(group.title))
+                .font(.system(size: fontSize))
+                .fontWeight(fontWeight)
+                .padding(.top, topPadding)
+                .padding(.bottom, 4)
+                .foregroundStyle(textColor)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+            
+            if shouldShowSeparatorAfterTitle(at: index, in: groupedWines()) {
+                Divider()
+                    .padding(.horizontal, 16)
+                    .opacity(0.6)
+            }
+        }
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .deleteDisabled(true)
+    }
+    
+    private var leadingToolbarButtons: some View {
+        HStack {
+            Button(action: {
+                showingSettings = true
+            }) {
+                Image(systemName: "gear")
+            }
+            Button(action: {
+                showingPrintView = true
+            }) {
+                Image(systemName: "printer")
+            }
+        }
+    }
+    
+    private var addWineButton: some View {
+        Button(action: {
+            showingAddWine = true
+        }) {
+            Label("Add Wine", systemImage: "plus")
+        }
+    }
 
     private func deleteWine(_ wine: Wine) {
         withAnimation {
-            // Log the wine deletion to history before deleting
-            historyService.logWineDeleted(wine: wine)
-            
             viewContext.delete(wine)
             try? viewContext.save()
             viewModel.refreshData()
@@ -679,9 +567,6 @@ struct ContentView: View {
             let groupedItems = groupedWines()
             for index in offsets {
                 if let wine = groupedItems[index].wine {
-                    // Log the wine deletion to history before deleting
-                    historyService.logWineDeleted(wine: wine)
-                    
                     viewContext.delete(wine)
                 }
             }
@@ -690,32 +575,6 @@ struct ContentView: View {
         }
     }
     
-    private func consumeWine(_ wine: Wine) {
-        // Don't consume if there's nothing to consume
-        guard wine.quantity > 0 else { return }
-        
-        let oldQuantity = wine.quantity
-        wine.quantity -= 1
-        
-        do {
-            try viewContext.save()
-            
-            // Log the wine consumption to history
-            historyService.logWineConsumed(wine: wine, quantityConsumed: 1)
-            
-            // Force an update to the object
-            viewContext.refresh(wine, mergeChanges: true)
-            // Make sure the changes are processed immediately
-            wine.objectWillChange.send()
-            
-            // Refresh the view model
-            viewModel.refreshData()
-        } catch {
-            print("Error saving context: \(error)")
-            wine.quantity = oldQuantity
-        }
-    }
-
     private func shouldShowSeparatorAfterTitle(at index: Int, in groups: [(level: Int, title: String, wine: Wine?)]) -> Bool {
         // Check if the next item is a wine
         if index < groups.count - 1 {

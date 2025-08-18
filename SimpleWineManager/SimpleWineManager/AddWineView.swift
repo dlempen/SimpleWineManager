@@ -16,6 +16,7 @@ struct AddWineView: View {
     @State private var producer = ""
     @State private var vintage = ""
     @State private var alcohol = ""
+    @State private var grapes = ""
     @State private var quantity: Int = 1
     @State private var selectedCategory = "Red"
     @State private var frontImage: UIImage?
@@ -45,6 +46,7 @@ struct AddWineView: View {
         _producer = State(initialValue: wine?.producer ?? "")
         _vintage = State(initialValue: wine?.vintage ?? "")
         _alcohol = State(initialValue: wine?.alcohol ?? "")
+        _grapes = State(initialValue: wine?.grapes ?? "")
         _quantity = State(initialValue: Int(wine?.quantity ?? 1))
         _selectedCategory = State(initialValue: wine?.category ?? "Red")
         _selectedCountry = State(initialValue: wine?.country ?? "")
@@ -136,6 +138,15 @@ struct AddWineView: View {
                     Text("%")
                         .foregroundColor(.secondary)
                 }
+                
+                AutocompleteTextField(
+                    title: "Grapes",
+                    placeholder: "Grapes",
+                    text: $grapes,
+                    suggestionProvider: suggestionProvider,
+                    fieldType: .grapes,
+                    keyboardType: .default
+                )
                 
                 HStack {
                     Text("Price")
@@ -432,6 +443,7 @@ struct AddWineView: View {
         newWine.producer = producer
         newWine.vintage = vintage
         newWine.alcohol = alcohol
+        newWine.grapes = grapes
         newWine.quantity = Int16(quantity)
         newWine.country = selectedCountry
         newWine.region = selectedRegion

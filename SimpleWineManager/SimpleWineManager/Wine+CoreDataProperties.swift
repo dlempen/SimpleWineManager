@@ -11,6 +11,7 @@ extension Wine {
     @NSManaged public var producer: String?
     @NSManaged public var vintage: String?
     @NSManaged public var alcohol: String?
+    @NSManaged public var grapes: String?
     @NSManaged public var quantity: Int16
     @NSManaged public var frontImageData: Data?
     @NSManaged public var backImageData: Data?

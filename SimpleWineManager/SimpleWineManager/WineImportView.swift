@@ -591,6 +591,7 @@ struct WineImportView: View {
             var producer: String?
             var vintage: String?
             var alcohol: String?
+            var grapes: String?
             var quantity: Int16 = 1
             var category: String?
             var country: String?
@@ -624,6 +625,8 @@ struct WineImportView: View {
                     vintage = cleanedValue
                 case .alcohol:
                     alcohol = cleanAlcoholValue(cleanedValue)
+                case .grapes:
+                    grapes = cleanedValue
                 case .quantity:
                     quantity = Int16(cleanedValue) ?? 1
                 case .category:
@@ -661,6 +664,7 @@ struct WineImportView: View {
                 producer: producer,
                 vintage: vintage,
                 alcohol: alcohol,
+                grapes: grapes,
                 quantity: quantity,
                 category: category,
                 country: country,
@@ -936,6 +940,7 @@ struct WineImportView: View {
         case .producer: return wine.producer?.isEmpty != false
         case .vintage: return wine.vintage?.isEmpty != false
         case .alcohol: return wine.alcohol?.isEmpty != false
+        case .grapes: return wine.grapes?.isEmpty != false
         case .category: return wine.category?.isEmpty != false
         case .country: return wine.country?.isEmpty != false
         case .region: return wine.region?.isEmpty != false
@@ -961,6 +966,7 @@ struct WineImportView: View {
         case .producer: wine.producer = trimmedValue.isEmpty ? nil : trimmedValue
         case .vintage: wine.vintage = trimmedValue.isEmpty ? nil : trimmedValue
         case .alcohol: wine.alcohol = trimmedValue.isEmpty ? nil : cleanAlcoholValue(trimmedValue)
+        case .grapes: wine.grapes = trimmedValue.isEmpty ? nil : trimmedValue
         case .category: wine.category = trimmedValue.isEmpty ? nil : trimmedValue
         case .country: wine.country = trimmedValue.isEmpty ? nil : trimmedValue
         case .region: wine.region = trimmedValue.isEmpty ? nil : trimmedValue
@@ -1007,6 +1013,7 @@ struct WineImportView: View {
         wine.producer = importWine.producer
         wine.vintage = importWine.vintage
         wine.alcohol = importWine.alcohol
+        wine.grapes = importWine.grapes
         wine.quantity = importWine.quantity
         wine.category = importWine.category
         wine.country = importWine.country
@@ -1027,6 +1034,7 @@ struct WineImportView: View {
         wine.producer = importWine.producer
         wine.vintage = importWine.vintage
         wine.alcohol = importWine.alcohol?.isEmpty == false ? cleanAlcoholValue(importWine.alcohol!) : nil
+        wine.grapes = importWine.grapes
         wine.quantity = importWine.quantity
         wine.category = importWine.category
         wine.country = importWine.country
@@ -1066,6 +1074,7 @@ struct ImportWine {
     let producer: String?
     let vintage: String?
     let alcohol: String?
+    let grapes: String?
     let quantity: Int16
     let category: String?
     let country: String?
@@ -1089,6 +1098,7 @@ struct ImportWine {
         self.producer = sharedWine.producer
         self.vintage = sharedWine.vintage
         self.alcohol = sharedWine.alcohol
+        self.grapes = sharedWine.grapes
         self.quantity = sharedWine.quantity
         self.category = sharedWine.category
         self.country = sharedWine.country
@@ -1124,6 +1134,7 @@ struct ImportWine {
         self.producer = nil
         self.vintage = nil
         self.alcohol = nil
+        self.grapes = nil
         self.quantity = 1
         self.category = nil
         self.country = nil
@@ -1145,11 +1156,12 @@ struct ImportWine {
     }
     
     // New initializer for properly mapped CSV wines
-    init(name: String?, producer: String?, vintage: String?, alcohol: String?, quantity: Int16, category: String?, country: String?, region: String?, subregion: String?, type: String?, bottleSize: String?, readyToTrinkYear: String?, bestBeforeYear: String?, storageLocation: String?, remarks: String?, wineRating: String?, price: Double?, csvData: [String: String]?, existsInDatabase: Bool) {
+    init(name: String?, producer: String?, vintage: String?, alcohol: String?, grapes: String?, quantity: Int16, category: String?, country: String?, region: String?, subregion: String?, type: String?, bottleSize: String?, readyToTrinkYear: String?, bestBeforeYear: String?, storageLocation: String?, remarks: String?, wineRating: String?, price: Double?, csvData: [String: String]?, existsInDatabase: Bool) {
         self.name = name
         self.producer = producer
         self.vintage = vintage
         self.alcohol = alcohol
+        self.grapes = grapes
         self.quantity = quantity
         self.category = category
         self.country = country
@@ -1221,7 +1233,7 @@ enum CSVImportStep {
 }
 
 enum WineField: CaseIterable {
-    case name, producer, vintage, alcohol, quantity, category, country, region, subregion, type, bottleSize, readyToTrinkYear, bestBeforeYear, storageLocation, remarks, wineRating, price, noImport
+    case name, producer, vintage, alcohol, grapes, quantity, category, country, region, subregion, type, bottleSize, readyToTrinkYear, bestBeforeYear, storageLocation, remarks, wineRating, price, noImport
     
     var displayName: String {
         switch self {
@@ -1229,6 +1241,7 @@ enum WineField: CaseIterable {
         case .producer: return "Producer"
         case .vintage: return "Vintage"
         case .alcohol: return "Alcohol %"
+        case .grapes: return "Grapes"
         case .quantity: return "Quantity"
         case .category: return "Category"
         case .country: return "Country"
@@ -1256,6 +1269,7 @@ enum WineField: CaseIterable {
             .producer: ["producer", "winery", "maker", "brand"],
             .vintage: ["vintage", "year"],
             .alcohol: ["alcohol", "alcohol %", "abv", "alcohol content"],
+            .grapes: ["grapes", "grape varieties", "variety", "varietal", "grape"],
             .quantity: ["quantity", "qty", "count", "amount"],
             .category: ["category", "type", "style", "wine type"],
             .country: ["country"],

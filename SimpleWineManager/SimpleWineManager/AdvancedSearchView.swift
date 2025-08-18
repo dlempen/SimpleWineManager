@@ -4,6 +4,7 @@ import SwiftUI
 class AdvancedSearchCriteria: ObservableObject {
     @Published var name = ""
     @Published var producer = ""
+    @Published var grapes = ""
     @Published var category = ""
     @Published var country = ""
     @Published var region = ""
@@ -31,6 +32,7 @@ class AdvancedSearchCriteria: ObservableObject {
     func reset() {
         name = ""
         producer = ""
+        grapes = ""
         category = ""
         country = ""
         region = ""
@@ -53,7 +55,7 @@ class AdvancedSearchCriteria: ObservableObject {
     }
     
     func hasActiveCriteria() -> Bool {
-        return !name.isEmpty || !producer.isEmpty || !category.isEmpty ||
+        return !name.isEmpty || !producer.isEmpty || !grapes.isEmpty || !category.isEmpty ||
                !country.isEmpty || !region.isEmpty || !subregion.isEmpty ||
                !type.isEmpty || !storageLocation.isEmpty ||
                !vintageFrom.isEmpty || !vintageTo.isEmpty ||
@@ -92,6 +94,14 @@ struct AdvancedSearchView: View {
                             .foregroundColor(.secondary)
                             .frame(width: 80, alignment: .leading)
                         TextField("Contains...", text: $criteria.producer)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    
+                    HStack {
+                        Text("Grapes")
+                            .foregroundColor(.secondary)
+                            .frame(width: 80, alignment: .leading)
+                        TextField("Contains...", text: $criteria.grapes)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                     }
                     
