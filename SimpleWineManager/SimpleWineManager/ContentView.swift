@@ -322,13 +322,17 @@ struct ContentView: View {
             }
         }
         
-        if !criteria.bottleSizeFilter.isEmpty {
+        if !criteria.bottleSizeFrom.isEmpty || !criteria.bottleSizeTo.isEmpty {
             guard let bottleSize = wine.bottleSize else { return false }
             let numericString = bottleSize.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
-            if let bottleSizeValue = Double(numericString), let filterValue = Double(criteria.bottleSizeFilter) {
-                guard bottleSizeValue == filterValue else { return false }
-            } else {
-                return false
+            guard let bottleSizeValue = Double(numericString) else { return false }
+            
+            if !criteria.bottleSizeFrom.isEmpty, let fromSize = Double(criteria.bottleSizeFrom) {
+                guard bottleSizeValue >= fromSize else { return false }
+            }
+            
+            if !criteria.bottleSizeTo.isEmpty, let toSize = Double(criteria.bottleSizeTo) {
+                guard bottleSizeValue <= toSize else { return false }
             }
         }
         

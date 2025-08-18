@@ -61,39 +61,6 @@ struct SettingsView: View {
                     }
                 }
                 
-                Section(header: Text("Image Quality"),
-                        footer: Text("Choose the desired image size for wine label photos. Images are automatically compressed when saved.")) {
-                    Picker("Select Quality", selection: $settings.imageQuality) {
-                        ForEach(ImageQuality.allCases, id: \.self) { quality in
-                            Text(quality.displayName).tag(quality)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    
-                    VStack(spacing: 8) {
-                        Button(action: { optimizeAllImages() }) {
-                            HStack {
-                                if isOptimizingImages {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                    Text("Optimizing...")
-                                } else {
-                                    Image(systemName: "arrow.down.circle")
-                                    Text("Optimize All Images")
-                                }
-                            }
-                        }
-                        .foregroundColor(.blue)
-                        .disabled(isOptimizingImages)
-                        
-                        if isOptimizingImages && !optimizationProgress.isEmpty {
-                            Text(optimizationProgress)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                
                 Section(header: Text("Sort Orders"),
                         footer: Text("Choose your preferred wine list sort order. Fields in blue are used as section headers.")) {
                     ForEach(settings.sortOrders) { order in
@@ -132,6 +99,39 @@ struct SettingsView: View {
                     
                     Button(action: { showingAddSortOrder = true }) {
                         Label("Add Sort Order", systemImage: "plus")
+                    }
+                }
+                
+                Section(header: Text("Image Quality"),
+                        footer: Text("Choose the desired image size for wine label photos. Images are automatically compressed when saved.")) {
+                    Picker("Select Quality", selection: $settings.imageQuality) {
+                        ForEach(ImageQuality.allCases, id: \.self) { quality in
+                            Text(quality.displayName).tag(quality)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    
+                    VStack(spacing: 8) {
+                        Button(action: { optimizeAllImages() }) {
+                            HStack {
+                                if isOptimizingImages {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                    Text("Optimizing...")
+                                } else {
+                                    Image(systemName: "arrow.down.circle")
+                                    Text("Optimize All Images")
+                                }
+                            }
+                        }
+                        .foregroundColor(.blue)
+                        .disabled(isOptimizingImages)
+                        
+                        if isOptimizingImages && !optimizationProgress.isEmpty {
+                            Text(optimizationProgress)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 

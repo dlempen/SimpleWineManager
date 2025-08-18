@@ -36,7 +36,8 @@ class GroupedWinesCacheManager: ObservableObject {
             hasher.combine(filterCriteria.readyToTrinkTo)
             hasher.combine(filterCriteria.bestBeforeFrom)
             hasher.combine(filterCriteria.bestBeforeTo)
-            hasher.combine(filterCriteria.bottleSizeFilter)
+            hasher.combine(filterCriteria.bottleSizeFrom)
+            hasher.combine(filterCriteria.bottleSizeTo)
             hasher.combine(searchText)
             
             self.filterHash = hasher.finalize()

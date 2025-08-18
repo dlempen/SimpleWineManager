@@ -27,8 +27,9 @@ class AdvancedSearchCriteria: ObservableObject {
     @Published var bestBeforeFrom = ""
     @Published var bestBeforeTo = ""
     
-    // Bottle size filter
-    @Published var bottleSizeFilter = ""
+    // Bottle size range filter
+    @Published var bottleSizeFrom = ""
+    @Published var bottleSizeTo = ""
     
     func reset() {
         name = ""
@@ -53,7 +54,8 @@ class AdvancedSearchCriteria: ObservableObject {
         readyToTrinkTo = ""
         bestBeforeFrom = ""
         bestBeforeTo = ""
-        bottleSizeFilter = ""
+        bottleSizeFrom = ""
+        bottleSizeTo = ""
     }
     
     func hasActiveCriteria() -> Bool {
@@ -66,7 +68,7 @@ class AdvancedSearchCriteria: ObservableObject {
                !quantityFrom.isEmpty || !quantityTo.isEmpty ||
                !readyToTrinkFrom.isEmpty || !readyToTrinkTo.isEmpty ||
                !bestBeforeFrom.isEmpty || !bestBeforeTo.isEmpty ||
-               !bottleSizeFilter.isEmpty
+               !bottleSizeFrom.isEmpty || !bottleSizeTo.isEmpty
     }
 }
 
@@ -324,16 +326,21 @@ struct AdvancedSearchView: View {
                     }
                 }
                 
-                Section(header: Text("Bottle Size")) {
+                Section(header: Text("Bottle Size Range (\(settings.bottleSizeUnit))")) {
                     HStack {
-                        Text("Size")
+                        Text("From")
                             .foregroundColor(.secondary)
-                            .frame(width: 80, alignment: .leading)
-                        TextField("e.g. 750", text: $criteria.bottleSizeFilter)
+                            .frame(width: 60, alignment: .leading)
+                        TextField("Min", text: $criteria.bottleSizeFrom)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .keyboardType(.numberPad)
-                        Text(settings.bottleSizeUnit)
+                        
+                        Text("To")
                             .foregroundColor(.secondary)
+                            .frame(width: 30, alignment: .leading)
+                        TextField("Max", text: $criteria.bottleSizeTo)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .keyboardType(.numberPad)
                     }
                 }
             }
