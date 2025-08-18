@@ -8,12 +8,14 @@ class SuggestionProvider: ObservableObject {
     @Published var producerSuggestions: [String] = []
     @Published var grapesSuggestions: [String] = []
     @Published var locationSuggestions: [String] = []
+    @Published var purchasedFromSuggestions: [String] = []
     
     private var context: NSManagedObjectContext
     private var nameCancellable: AnyCancellable?
     private var producerCancellable: AnyCancellable?
     private var grapesCancellable: AnyCancellable?
     private var locationCancellable: AnyCancellable?
+    private var purchasedFromCancellable: AnyCancellable?
     
     init(context: NSManagedObjectContext) {
         self.context = context
@@ -54,6 +56,8 @@ class SuggestionProvider: ObservableObject {
                 grapesSuggestions = Array(uniqueValues)
             case .storageLocation:
                 locationSuggestions = Array(uniqueValues)
+            case .purchasedFrom:
+                purchasedFromSuggestions = Array(uniqueValues)
             }
         } catch {
             print("Error fetching suggestions: \(error)")
@@ -70,13 +74,17 @@ class SuggestionProvider: ObservableObject {
             grapesSuggestions = []
         case .storageLocation:
             locationSuggestions = []
+        case .purchasedFrom:
+            purchasedFromSuggestions = []
         }
     }
     
     func clearAllSuggestions() {
         nameSuggestions = []
         producerSuggestions = []
+        grapesSuggestions = []
         locationSuggestions = []
+        purchasedFromSuggestions = []
     }
     
     enum FieldType: String {
@@ -84,6 +92,7 @@ class SuggestionProvider: ObservableObject {
         case producer
         case grapes
         case storageLocation
+        case purchasedFrom
     }
 }
 
@@ -146,6 +155,8 @@ struct AutocompleteTextField: View {
             return suggestionProvider.grapesSuggestions
         case .storageLocation:
             return suggestionProvider.locationSuggestions
+        case .purchasedFrom:
+            return suggestionProvider.purchasedFromSuggestions
         }
     }
     

@@ -602,6 +602,7 @@ struct WineImportView: View {
             var readyToTrinkYear: String?
             var bestBeforeYear: String?
             var storageLocation: String?
+            var purchasedFrom: String?
             var remarks: String?
             var wineRating: String?
             var price: Double?
@@ -647,6 +648,8 @@ struct WineImportView: View {
                     bestBeforeYear = cleanedValue
                 case .storageLocation:
                     storageLocation = cleanedValue
+                case .purchasedFrom:
+                    purchasedFrom = cleanedValue
                 case .remarks:
                     remarks = cleanedValue
                 case .wineRating:
@@ -675,6 +678,7 @@ struct WineImportView: View {
                 readyToTrinkYear: readyToTrinkYear,
                 bestBeforeYear: bestBeforeYear,
                 storageLocation: storageLocation,
+                purchasedFrom: purchasedFrom,
                 remarks: remarks,
                 wineRating: wineRating,
                 price: price,
@@ -866,6 +870,9 @@ struct WineImportView: View {
         if updateMode == .overwrite || shouldFillField(wine, field: .storageLocation) {
             wine.storageLocation = importWine.storageLocation
         }
+        if updateMode == .overwrite || shouldFillField(wine, field: .purchasedFrom) {
+            wine.purchasedFrom = importWine.purchasedFrom
+        }
         if updateMode == .overwrite || shouldFillField(wine, field: .remarks) {
             wine.remarks = importWine.remarks
         }
@@ -950,6 +957,7 @@ struct WineImportView: View {
         case .readyToTrinkYear: return wine.readyToTrinkYear?.isEmpty != false
         case .bestBeforeYear: return wine.bestBeforeYear?.isEmpty != false
         case .storageLocation: return wine.storageLocation?.isEmpty != false
+        case .purchasedFrom: return wine.purchasedFrom?.isEmpty != false
         case .remarks: return wine.remarks?.isEmpty != false
         case .wineRating: return wine.wineRating?.isEmpty != false
         case .price: return wine.price == nil || wine.price?.doubleValue == 0
@@ -976,6 +984,7 @@ struct WineImportView: View {
         case .readyToTrinkYear: wine.readyToTrinkYear = trimmedValue.isEmpty ? nil : trimmedValue
         case .bestBeforeYear: wine.bestBeforeYear = trimmedValue.isEmpty ? nil : trimmedValue
         case .storageLocation: wine.storageLocation = trimmedValue.isEmpty ? nil : trimmedValue
+        case .purchasedFrom: wine.purchasedFrom = trimmedValue.isEmpty ? nil : trimmedValue
         case .remarks: wine.remarks = trimmedValue.isEmpty ? nil : trimmedValue
         case .wineRating: wine.wineRating = trimmedValue.isEmpty ? nil : trimmedValue
         case .price:
@@ -1024,6 +1033,7 @@ struct WineImportView: View {
         wine.readyToTrinkYear = importWine.readyToTrinkYear
         wine.bestBeforeYear = importWine.bestBeforeYear
         wine.storageLocation = importWine.storageLocation
+        wine.purchasedFrom = importWine.purchasedFrom
         wine.remarks = importWine.remarks
         wine.wineRating = importWine.wineRating
         wine.price = importWine.price != nil ? NSDecimalNumber(value: importWine.price!) : nil
@@ -1085,6 +1095,7 @@ struct ImportWine {
     let readyToTrinkYear: String?
     let bestBeforeYear: String?
     let storageLocation: String?
+    let purchasedFrom: String?
     let remarks: String?
     let wineRating: String?
     let price: Double?
@@ -1109,6 +1120,7 @@ struct ImportWine {
         self.readyToTrinkYear = sharedWine.readyToTrinkYear
         self.bestBeforeYear = sharedWine.bestBeforeYear
         self.storageLocation = sharedWine.storageLocation
+        self.purchasedFrom = sharedWine.purchasedFrom
         self.remarks = nil // Not available in SharedWine
         self.wineRating = nil // Not available in SharedWine
         self.price = sharedWine.price
@@ -1145,6 +1157,7 @@ struct ImportWine {
         self.readyToTrinkYear = nil
         self.bestBeforeYear = nil
         self.storageLocation = nil
+        self.purchasedFrom = nil
         self.remarks = nil
         self.wineRating = nil
         self.price = nil
@@ -1156,7 +1169,7 @@ struct ImportWine {
     }
     
     // New initializer for properly mapped CSV wines
-    init(name: String?, producer: String?, vintage: String?, alcohol: String?, grapes: String?, quantity: Int16, category: String?, country: String?, region: String?, subregion: String?, type: String?, bottleSize: String?, readyToTrinkYear: String?, bestBeforeYear: String?, storageLocation: String?, remarks: String?, wineRating: String?, price: Double?, csvData: [String: String]?, existsInDatabase: Bool) {
+    init(name: String?, producer: String?, vintage: String?, alcohol: String?, grapes: String?, quantity: Int16, category: String?, country: String?, region: String?, subregion: String?, type: String?, bottleSize: String?, readyToTrinkYear: String?, bestBeforeYear: String?, storageLocation: String?, purchasedFrom: String?, remarks: String?, wineRating: String?, price: Double?, csvData: [String: String]?, existsInDatabase: Bool) {
         self.name = name
         self.producer = producer
         self.vintage = vintage
@@ -1172,6 +1185,7 @@ struct ImportWine {
         self.readyToTrinkYear = readyToTrinkYear
         self.bestBeforeYear = bestBeforeYear
         self.storageLocation = storageLocation
+        self.purchasedFrom = purchasedFrom
         self.remarks = remarks
         self.wineRating = wineRating
         self.price = price
@@ -1233,7 +1247,7 @@ enum CSVImportStep {
 }
 
 enum WineField: CaseIterable {
-    case name, producer, vintage, alcohol, grapes, quantity, category, country, region, subregion, type, bottleSize, readyToTrinkYear, bestBeforeYear, storageLocation, remarks, wineRating, price, noImport
+    case name, producer, vintage, alcohol, grapes, quantity, category, country, region, subregion, type, bottleSize, readyToTrinkYear, bestBeforeYear, storageLocation, purchasedFrom, remarks, wineRating, price, noImport
     
     var displayName: String {
         switch self {
@@ -1252,6 +1266,7 @@ enum WineField: CaseIterable {
         case .readyToTrinkYear: return "Ready to Drink Year"
         case .bestBeforeYear: return "Best Before Year"
         case .storageLocation: return "Storage Location"
+        case .purchasedFrom: return "Purchased From"
         case .remarks: return "Remarks"
         case .wineRating: return "Rating"
         case .price: return "Price"
@@ -1280,6 +1295,7 @@ enum WineField: CaseIterable {
             .readyToTrinkYear: ["ready to drink", "ready", "drink from"],
             .bestBeforeYear: ["best before", "drink by", "best by"],
             .storageLocation: ["storage", "location", "cellar"],
+            .purchasedFrom: ["purchased from", "bought from", "store", "shop", "retailer"],
             .remarks: ["remarks", "notes", "comments", "description"],
             .wineRating: ["rating", "score", "stars"],
             .price: ["price", "cost", "value"]

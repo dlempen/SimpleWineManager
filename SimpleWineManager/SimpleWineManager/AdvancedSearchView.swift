@@ -11,6 +11,7 @@ class AdvancedSearchCriteria: ObservableObject {
     @Published var subregion = ""
     @Published var type = ""
     @Published var storageLocation = ""
+    @Published var purchasedFrom = ""
     
     // Range filters
     @Published var vintageFrom = ""
@@ -39,6 +40,7 @@ class AdvancedSearchCriteria: ObservableObject {
         subregion = ""
         type = ""
         storageLocation = ""
+        purchasedFrom = ""
         vintageFrom = ""
         vintageTo = ""
         alcoholFrom = ""
@@ -57,7 +59,7 @@ class AdvancedSearchCriteria: ObservableObject {
     func hasActiveCriteria() -> Bool {
         return !name.isEmpty || !producer.isEmpty || !grapes.isEmpty || !category.isEmpty ||
                !country.isEmpty || !region.isEmpty || !subregion.isEmpty ||
-               !type.isEmpty || !storageLocation.isEmpty ||
+               !type.isEmpty || !storageLocation.isEmpty || !purchasedFrom.isEmpty ||
                !vintageFrom.isEmpty || !vintageTo.isEmpty ||
                !alcoholFrom.isEmpty || !alcoholTo.isEmpty ||
                !priceFrom.isEmpty || !priceTo.isEmpty ||
@@ -123,6 +125,14 @@ struct AdvancedSearchView: View {
                             .foregroundColor(.secondary)
                             .frame(width: 80, alignment: .leading)
                         TextField("Location...", text: $criteria.storageLocation)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    
+                    HStack {
+                        Text("Purchased from")
+                            .foregroundColor(.secondary)
+                            .frame(width: 80, alignment: .leading)
+                        TextField("Store, shop...", text: $criteria.purchasedFrom)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                     }
                 }

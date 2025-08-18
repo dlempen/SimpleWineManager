@@ -32,6 +32,7 @@ struct WineDetailView: View {
     @State private var editSubregion: String = ""
     @State private var editType: String = ""
     @State private var editPrice: String = ""
+    @State private var editPurchasedFrom: String = ""
     @State private var editBottleSize: String = ""
     @State private var editReadyToTrinkYear: String = ""
     @State private var editBestBeforeYear: String = ""
@@ -61,6 +62,7 @@ struct WineDetailView: View {
         editSubregion = wine.subregion ?? ""
         editType = wine.type ?? ""
         editPrice = wine.price?.stringValue ?? ""
+        editPurchasedFrom = wine.purchasedFrom ?? ""
         
         // Convert stored ml value to user's preferred unit for editing
         if let bottleSize = wine.bottleSize {
@@ -255,6 +257,15 @@ struct WineDetailView: View {
                     Text(settings.currencySymbol)
                         .foregroundColor(.secondary)
                 }
+                
+                AutocompleteTextField(
+                    title: "Purchased from",
+                    placeholder: "Store/Location",
+                    text: $editPurchasedFrom,
+                    suggestionProvider: suggestionProvider,
+                    fieldType: .purchasedFrom,
+                    keyboardType: .default
+                )
                 
                 HStack {
                     Text("Bottle Size")
@@ -581,6 +592,9 @@ struct WineDetailView: View {
                 if let price = wine.price, price != 0 {
                     DetailRow(label: "Price", value: "\(price)\(settings.currencySymbol)")
                 }
+                if let purchasedFrom = wine.purchasedFrom, !purchasedFrom.isEmpty {
+                    DetailRow(label: "Purchased from", value: purchasedFrom)
+                }
                 if let bottleSize = wine.bottleSize {
                     DetailRow(label: "Bottle Size", value: settings.getDisplayBottleSize(bottleSize))
                 }
@@ -659,6 +673,7 @@ struct WineDetailView: View {
         editSubregion = wine.subregion ?? ""
         editType = wine.type ?? ""
         editPrice = wine.price?.stringValue ?? ""
+        editPurchasedFrom = wine.purchasedFrom ?? ""
         // Remove unit from bottleSize when editing
         editBottleSize = (wine.bottleSize ?? "")
             .replacingOccurrences(of: "ml", with: "")
@@ -714,6 +729,7 @@ struct WineDetailView: View {
         wine.subregion = editSubregion
         wine.type = editType
         wine.price = NSDecimalNumber(string: editPrice.isEmpty ? "0" : editPrice)
+        wine.purchasedFrom = editPurchasedFrom.isEmpty ? nil : editPurchasedFrom
         // Ensure the bottle size is saved in milliliters
         let mlValue = settings.convertToMilliliters(editBottleSize, from: settings.bottleSizeUnit)
         wine.bottleSize = "\(mlValue)ml"

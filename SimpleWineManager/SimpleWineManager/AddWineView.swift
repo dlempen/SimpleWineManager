@@ -24,6 +24,7 @@ struct AddWineView: View {
     @State private var isShowingFrontCamera = false
     @State private var isShowingBackCamera = false
     @State private var price = ""
+    @State private var purchasedFrom = ""
     @State private var bottleSize = ""
     @State private var readyToTrinkYear = ""
     @State private var bestBeforeYear = ""
@@ -54,6 +55,7 @@ struct AddWineView: View {
         _selectedSubregion = State(initialValue: wine?.subregion ?? "")
         _selectedType = State(initialValue: wine?.type ?? "")
         _price = State(initialValue: wine?.price?.stringValue ?? "")
+        _purchasedFrom = State(initialValue: wine?.purchasedFrom ?? "")
         
         // Initialize with raw milliliter value, conversion will happen in onAppear
         if let wineBottleSize = wine?.bottleSize {
@@ -158,6 +160,15 @@ struct AddWineView: View {
                     Text(settings.currencySymbol)
                         .foregroundColor(.secondary)
                 }
+                
+                AutocompleteTextField(
+                    title: "Purchased from",
+                    placeholder: "Store/Location",
+                    text: $purchasedFrom,
+                    suggestionProvider: suggestionProvider,
+                    fieldType: .purchasedFrom,
+                    keyboardType: .default
+                )
                 
                 HStack {
                     Text("Bottle Size")
@@ -451,6 +462,7 @@ struct AddWineView: View {
         newWine.type = selectedType
         newWine.category = selectedCategory
         newWine.price = NSDecimalNumber(string: price.isEmpty ? "0" : price)
+        newWine.purchasedFrom = purchasedFrom.isEmpty ? nil : purchasedFrom
         // Ensure the bottle size is saved in milliliters
         newWine.bottleSize = convertBottleSizeForSaving()
         newWine.readyToTrinkYear = readyToTrinkYear
@@ -489,6 +501,7 @@ struct AddWineView: View {
                selectedSubregion.isEmpty &&
                selectedType.isEmpty &&
                price.isEmpty &&
+               purchasedFrom.isEmpty &&
                bottleSizeIsDefault &&
                readyToTrinkYear.isEmpty &&
                bestBeforeYear.isEmpty &&

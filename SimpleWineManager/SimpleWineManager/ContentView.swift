@@ -199,6 +199,7 @@ struct ContentView: View {
         if let readyYear = wine.readyToTrinkYear, readyYear.lowercased().contains(searchTerm) { return true }
         if let bestYear = wine.bestBeforeYear, bestYear.lowercased().contains(searchTerm) { return true }
         if let location = wine.storageLocation, location.lowercased().contains(searchTerm) { return true }
+        if let purchasedFrom = wine.purchasedFrom, purchasedFrom.lowercased().contains(searchTerm) { return true }
         if let price = wine.price?.stringValue, price.contains(searchTerm) { return true }
         return false
     }
@@ -219,6 +220,10 @@ struct ContentView: View {
         
         if !criteria.storageLocation.isEmpty {
             guard let location = wine.storageLocation, location.lowercased().contains(criteria.storageLocation.lowercased()) else { return false }
+        }
+        
+        if !criteria.purchasedFrom.isEmpty {
+            guard let purchasedFrom = wine.purchasedFrom, purchasedFrom.lowercased().contains(criteria.purchasedFrom.lowercased()) else { return false }
         }
         
         // Exact match filters

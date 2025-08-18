@@ -26,6 +26,7 @@ struct PrintView: View {
                        (wine.type?.lowercased().contains(searchLower) ?? false) ||
                        (wine.category?.lowercased().contains(searchLower) ?? false) ||
                        (wine.storageLocation?.lowercased().contains(searchLower) ?? false) ||
+                       (wine.purchasedFrom?.lowercased().contains(searchLower) ?? false) ||
                        (wine.remarks?.lowercased().contains(searchLower) ?? false) ||
                        (wine.wineRating?.lowercased().contains(searchLower) ?? false)
             }

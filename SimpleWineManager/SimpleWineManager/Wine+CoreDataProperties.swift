@@ -21,6 +21,7 @@ extension Wine {
     @NSManaged public var type: String?
     @NSManaged public var category: String?
     @NSManaged public var price: NSDecimalNumber?
+    @NSManaged public var purchasedFrom: String?
     @NSManaged public var bottleSize: String?
     @NSManaged public var readyToTrinkYear: String?
     @NSManaged public var bestBeforeYear: String?

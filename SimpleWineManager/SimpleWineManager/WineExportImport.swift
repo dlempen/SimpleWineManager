@@ -39,6 +39,7 @@ struct SharedWine: Codable, Identifiable {
     let readyToTrinkYear: String?
     let bestBeforeYear: String?
     let storageLocation: String?
+    let purchasedFrom: String?
     let frontImageData: Data?
     let backImageData: Data?
     
@@ -60,6 +61,7 @@ struct SharedWine: Codable, Identifiable {
         self.readyToTrinkYear = wine.readyToTrinkYear
         self.bestBeforeYear = wine.bestBeforeYear
         self.storageLocation = wine.storageLocation
+        self.purchasedFrom = wine.purchasedFrom
         self.frontImageData = includeImages ? wine.frontImageData : nil
         self.backImageData = includeImages ? wine.backImageData : nil
     }
@@ -83,6 +85,7 @@ struct SharedWine: Codable, Identifiable {
         wine.readyToTrinkYear = self.readyToTrinkYear
         wine.bestBeforeYear = self.bestBeforeYear
         wine.storageLocation = self.storageLocation
+        wine.purchasedFrom = self.purchasedFrom
         wine.frontImageData = self.frontImageData
         wine.backImageData = self.backImageData
         return wine
@@ -133,7 +136,7 @@ class WineExportImportManager: ObservableObject {
                 "Name", "Producer", "Vintage", "Category", "Alcohol %", 
                 "Quantity", "Price", "Bottle Size", "Country", "Region", 
                 "Subregion", "Type", "Ready to Drink Year", "Best Before Year", 
-                "Storage Location", "Remarks", "Rating"
+                "Storage Location", "Purchased From", "Remarks", "Rating"
             ]
             
             // Add headers to CSV
@@ -157,13 +160,14 @@ class WineExportImportManager: ObservableObject {
                 let readyToTrinkYear = wine.readyToTrinkYear ?? ""
                 let bestBeforeYear = wine.bestBeforeYear ?? ""
                 let storageLocation = wine.storageLocation ?? ""
+                let purchasedFrom = wine.purchasedFrom ?? ""
                 let remarks = wine.remarks ?? ""
                 let rating = wine.wineRating ?? ""
                 
                 let fields = [
                     name, producer, vintage, category, alcohol, quantity, price, bottleSize,
                     country, region, subregion, type, readyToTrinkYear, bestBeforeYear,
-                    storageLocation, remarks, rating
+                    storageLocation, purchasedFrom, remarks, rating
                 ]
                 
                 csvContent += fields.map { escapeCSVField($0) }.joined(separator: ",") + "\n"
