@@ -43,20 +43,28 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Bottle Size Unit"),
-                        footer: Text("This will be used as the default unit for bottle sizes.")) {
-                    Picker("Select Unit", selection: $settings.bottleSizeUnit) {
-                        ForEach(SettingsStore.bottleSizeUnits, id: \.self) { unit in
-                            Text(unit).tag(unit)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                }
-                
-                Section(header: Text("Currency")) {
-                    Picker("Select Currency", selection: $settings.selectedCurrency) {
-                        ForEach(SettingsStore.currencies, id: \.self) { currency in
-                            Text(currency).tag(currency)
+                // Manual Section
+                Section {
+                    NavigationLink(destination: ManualView()) {
+                        HStack {
+                            Image(systemName: "book.fill")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .frame(width: 32, height: 32)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("User Manual")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                
+                                Text("Learn how to use Wine Manager")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
                         }
                     }
                 }
@@ -102,6 +110,35 @@ struct SettingsView: View {
                     }
                 }
                 
+                Section(header: Text("Data Management"),
+                        footer: Text("Export your wine collection to share with others, or import wines from CSV files or shared collections.")) {
+                    Button(action: { showingWineSelection = true }) {
+                        Label("Export Wines", systemImage: "square.and.arrow.up")
+                    }
+                    
+                    Button(action: { showingImportPicker = true }) {
+                        Label("Import Wines", systemImage: "square.and.arrow.down")
+                    }
+                }
+                
+                Section(header: Text("Currency")) {
+                    Picker("Select Currency", selection: $settings.selectedCurrency) {
+                        ForEach(SettingsStore.currencies, id: \.self) { currency in
+                            Text(currency).tag(currency)
+                        }
+                    }
+                }
+                
+                Section(header: Text("Bottle Size Unit"),
+                        footer: Text("This will be used as the default unit for bottle sizes.")) {
+                    Picker("Select Unit", selection: $settings.bottleSizeUnit) {
+                        ForEach(SettingsStore.bottleSizeUnits, id: \.self) { unit in
+                            Text(unit).tag(unit)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                }
+                
                 Section(header: Text("Image Quality"),
                         footer: Text("Choose the desired image size for wine label photos. Images are automatically compressed when saved.")) {
                     Picker("Select Quality", selection: $settings.imageQuality) {
@@ -132,17 +169,6 @@ struct SettingsView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                    }
-                }
-                
-                Section(header: Text("Data Management"),
-                        footer: Text("Export your wine collection to share with others, or import wines from CSV files or shared collections.")) {
-                    Button(action: { showingWineSelection = true }) {
-                        Label("Export Wines", systemImage: "square.and.arrow.up")
-                    }
-                    
-                    Button(action: { showingImportPicker = true }) {
-                        Label("Import Wines", systemImage: "square.and.arrow.down")
                     }
                 }
             }
