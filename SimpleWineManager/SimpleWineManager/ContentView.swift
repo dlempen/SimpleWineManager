@@ -527,9 +527,20 @@ struct ContentView: View {
             WineRowView(wine: wine)
         }
         .id(wineId)
+        .swipeActions(edge: .leading) {
+            Button {
+                consumeWine(wine)
+            } label: {
+                Label("Consume", systemImage: "wineglass.fill")
+            }
+            .tint(.orange)
+            .disabled(wine.quantity <= 0)
+        }
         .swipeActions(edge: .trailing) {
-            Button("Delete", role: .destructive) {
+            Button(role: .destructive) {
                 deleteWine(wine)
+            } label: {
+                Label("Delete", systemImage: "trash.fill")
             }
         }
         .listRowSeparator(.visible)
@@ -588,6 +599,30 @@ struct ContentView: View {
             showingAddWine = true
         }) {
             Label("Add Wine", systemImage: "plus")
+        }
+    }
+
+    private func consumeWine(_ wine: Wine) {
+        // Don't consume if there's nothing to consume
+        guard wine.quantity > 0 else { return }
+        
+        withAnimation {
+            let oldQuantity = wine.quantity
+            wine.quantity -= 1
+            
+            do {
+                try viewContext.save()
+                viewContext.refresh(wine, mergeChanges: true)
+                wine.objectWillChange.send()
+                viewModel.refreshData()
+                
+                // Note: History service would need to be initialized here if needed
+                // For now, we're keeping it simple without history logging
+                
+            } catch {
+                print("Error saving context: \(error)")
+                wine.quantity = oldQuantity
+            }
         }
     }
 
