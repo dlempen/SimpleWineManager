@@ -498,11 +498,32 @@ struct WineImportView: View {
     }
     
     private func parseCSV(data: Data) throws -> (headers: [String], wines: [ImportWine]) {
-        guard let content = String(data: data, encoding: .utf8) else {
+        // Try to detect encoding - first try UTF-8, then UTF-16
+        var content: String?
+        
+        // Try UTF-8 first
+        content = String(data: data, encoding: .utf8)
+        
+        // If UTF-8 fails, try UTF-16 (common with Excel exports)
+        if content == nil {
+            content = String(data: data, encoding: .utf16)
+        }
+        
+        // If UTF-16 fails, try UTF-16 Little Endian with BOM
+        if content == nil {
+            content = String(data: data, encoding: .utf16LittleEndian)
+        }
+        
+        // If all fail, try ISO Latin 1 as last resort
+        if content == nil {
+            content = String(data: data, encoding: .isoLatin1)
+        }
+        
+        guard let csvContent = content else {
             throw ImportError.invalidFormat
         }
         
-        let lines = content.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        let lines = csvContent.components(separatedBy: .newlines).filter { !$0.isEmpty }
         guard !lines.isEmpty else {
             throw ImportError.invalidFormat
         }
@@ -516,11 +537,22 @@ struct WineImportView: View {
         // Parse wine rows
         var wines: [ImportWine] = []
         for i in 1..<lines.count {
-            let fields = parseCSVLine(lines[i])
-            if fields.count == headers.count {
-                let wine = ImportWine(from: headers, fields: fields, context: viewContext)
-                wines.append(wine)
+            var fields = parseCSVLine(lines[i])
+            
+            // Handle variable field counts by padding or truncating
+            if fields.count < headers.count {
+                // Pad with empty strings if fewer fields than headers
+                while fields.count < headers.count {
+                    fields.append("")
+                }
+            } else if fields.count > headers.count {
+                // Truncate if more fields than headers
+                fields = Array(fields.prefix(headers.count))
             }
+            
+            // Now fields.count should equal headers.count
+            let wine = ImportWine(from: headers, fields: fields, context: viewContext)
+            wines.append(wine)
         }
         
         return (headers, wines)
