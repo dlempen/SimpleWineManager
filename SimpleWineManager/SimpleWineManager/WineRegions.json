@@ -569,14 +569,62 @@
       }
     },
     "Chile": {
-      "Maipo Valley": {
-        "Central Region": {
-          "types": ["Cabernet Sauvignon", "Carmenere"]
+      "Aconcagua": {
+        "Aconcagua Valley": {
+          "types": ["Cabernet Sauvignon", "Syrah", "Carmenere"]
+        },
+        "Casablanca Valley": {
+          "types": ["Sauvignon Blanc", "Chardonnay", "Pinot Noir"]
+        },
+        "San Antonio Valley": {
+          "types": ["Sauvignon Blanc", "Pinot Noir", "Chardonnay"]
         }
       },
-      "Casablanca Valley": {
-        "Central Region": {
-          "types": ["Sauvignon Blanc", "Chardonnay", "Pinot Noir"]
+      "Atacama": {
+        "Pisco": {
+          "types": ["Pisco", "Muscat"]
+        }
+      },
+      "Central Valley": {
+        "Maipo Valley": {
+          "types": ["Cabernet Sauvignon", "Carmenere", "Merlot"]
+        },
+        "Rapel Valley": {
+          "types": ["Cabernet Sauvignon", "Carmenere", "Merlot"]
+        },
+        "Cachapoal Valley": {
+          "types": ["Cabernet Sauvignon", "Carmenere", "Syrah"]
+        },
+        "Colchagua Valley": {
+          "types": ["Cabernet Sauvignon", "Carmenere", "Syrah", "Malbec"]
+        },
+        "Curicó Valley": {
+          "types": ["Sauvignon Blanc", "Chardonnay", "Cabernet Sauvignon"]
+        },
+        "Maule Valley": {
+          "types": ["Cabernet Sauvignon", "Merlot", "Carmenere", "País"]
+        }
+      },
+      "Coquimbo": {
+        "Elqui Valley": {
+          "types": ["Syrah", "Sauvignon Blanc", "Pisco"]
+        },
+        "Limarí Valley": {
+          "types": ["Chardonnay", "Syrah", "Sauvignon Blanc"]
+        },
+        "Choapa Valley": {
+          "types": ["Cabernet Sauvignon", "Syrah"]
+        }
+      },
+      "Southern Region": {
+        "Itata Valley": {
+          "types": ["País", "Moscatel", "Cinsault"]
+        },
+        "Bío Bío Valley": {
+          "types": ["Pinot Noir", "Chardonnay", "Riesling", "Gewürztraminer"]
+        },
+        "Malleco Valley": {
+          "types": ["Chardonnay", "Pinot Noir"]
         }
       }
     },
