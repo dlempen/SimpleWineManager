@@ -66,6 +66,12 @@ class SettingsStore: ObservableObject {
         }
     }
     
+    @Published var hideZeroQuantityWines: Bool {
+        didSet {
+            UserDefaults.standard.set(hideZeroQuantityWines, forKey: "hideZeroQuantityWines")
+        }
+    }
+    
     @Published var imageQuality: ImageQuality {
         didSet {
             UserDefaults.standard.set(imageQuality.rawValue, forKey: "imageQuality")
@@ -104,6 +110,7 @@ class SettingsStore: ObservableObject {
         self.selectedCurrency = UserDefaults.standard.string(forKey: "selectedCurrency") ?? "EUR (€)"
         self.bottleSizeUnit = UserDefaults.standard.string(forKey: "bottleSizeUnit") ?? "ml"
         self.importWithQuantity = UserDefaults.standard.bool(forKey: "importWithQuantity") // defaults to false
+        self.hideZeroQuantityWines = UserDefaults.standard.bool(forKey: "hideZeroQuantityWines") // defaults to false
         
         // Load image quality setting
         if let imageQualityString = UserDefaults.standard.string(forKey: "imageQuality"),

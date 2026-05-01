@@ -167,6 +167,11 @@ struct ContentView: View {
         
         var filtered = Array(wines)
         
+        // Hide wines with quantity 0 if the setting is enabled
+        if settings.hideZeroQuantityWines {
+            filtered = filtered.filter { $0.quantity > 0 }
+        }
+        
         // Apply basic text search if not empty
         if !searchText.isEmpty {
             filtered = filtered.filter { wine in

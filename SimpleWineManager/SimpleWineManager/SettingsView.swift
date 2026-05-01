@@ -127,6 +127,7 @@ struct SettingsView: View {
                             Text(currency).tag(currency)
                         }
                     }
+                    Toggle("Hide wines with Qty 0", isOn: $settings.hideZeroQuantityWines)
                 }
                 
                 Section(header: Text("Bottle Size Unit"),
