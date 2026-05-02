@@ -71,6 +71,33 @@ class SettingsStore: ObservableObject {
             UserDefaults.standard.set(hideZeroQuantityWines, forKey: "hideZeroQuantityWines")
         }
     }
+
+    // MARK: - AI Integration Settings
+
+    @Published var aiProvider: AIProvider {
+        didSet {
+            UserDefaults.standard.set(aiProvider.rawValue, forKey: "aiProvider")
+        }
+    }
+
+    @Published var aiApiKey: String {
+        didSet {
+            // Store in Keychain for security; fall back to UserDefaults for simplicity
+            UserDefaults.standard.set(aiApiKey, forKey: "aiApiKey")
+        }
+    }
+
+    @Published var aiModel: String {
+        didSet {
+            UserDefaults.standard.set(aiModel, forKey: "aiModel")
+        }
+    }
+
+    @Published var aiCustomBaseURL: String {
+        didSet {
+            UserDefaults.standard.set(aiCustomBaseURL, forKey: "aiCustomBaseURL")
+        }
+    }
     
     @Published var imageQuality: ImageQuality {
         didSet {
@@ -111,6 +138,17 @@ class SettingsStore: ObservableObject {
         self.bottleSizeUnit = UserDefaults.standard.string(forKey: "bottleSizeUnit") ?? "ml"
         self.importWithQuantity = UserDefaults.standard.bool(forKey: "importWithQuantity") // defaults to false
         self.hideZeroQuantityWines = UserDefaults.standard.bool(forKey: "hideZeroQuantityWines") // defaults to false
+
+        // AI settings
+        if let providerRaw = UserDefaults.standard.string(forKey: "aiProvider"),
+           let provider = AIProvider(rawValue: providerRaw) {
+            self.aiProvider = provider
+        } else {
+            self.aiProvider = .openAI
+        }
+        self.aiApiKey = UserDefaults.standard.string(forKey: "aiApiKey") ?? ""
+        self.aiModel = UserDefaults.standard.string(forKey: "aiModel") ?? ""
+        self.aiCustomBaseURL = UserDefaults.standard.string(forKey: "aiCustomBaseURL") ?? ""
         
         // Load image quality setting
         if let imageQualityString = UserDefaults.standard.string(forKey: "imageQuality"),

@@ -48,6 +48,13 @@ struct WineDetailView: View {
     // Track if images are newly taken vs. existing
     @State private var frontImageIsNew = false
     @State private var backImageIsNew = false
+
+    // MARK: - AI state
+    @State private var isAIEnriching = false
+    @State private var aiErrorMessage: String?
+    @State private var showAIError = false
+    @State private var showAIPreview = false
+    @State private var pendingAISuggestion: AIWineSuggestion?
     
     private func setupEditingState() {
         editName = wine.name ?? ""
@@ -114,6 +121,18 @@ struct WineDetailView: View {
         .toolbar {
             if isEditing {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    // AI button — only when API key configured
+                    if !settings.aiApiKey.isEmpty {
+                        Button(action: triggerAIEnrichment) {
+                            if isAIEnriching {
+                                ProgressView().scaleEffect(0.85)
+                            } else {
+                                Label("AI Fill", systemImage: "sparkles")
+                                    .foregroundColor(.purple)
+                            }
+                        }
+                        .disabled(isAIEnriching || (editName.isEmpty && editProducer.isEmpty))
+                    }
                     Button("Save") {
                         saveChanges()
                     }
@@ -148,6 +167,36 @@ struct WineDetailView: View {
             ImagePicker(image: $editBackImage, sourceType: .camera, onImageSelected: { _ in 
                 backImageIsNew = true // Mark as newly taken
             })
+        }
+        .sheet(isPresented: $showAIPreview) {
+            if let suggestion = pendingAISuggestion {
+                AIPreviewView(
+                    suggestion: suggestion,
+                    currentName: editName,
+                    currentProducer: editProducer,
+                    currentVintage: editVintage,
+                    currentAlcohol: editAlcohol,
+                    currentGrapes: editGrapes,
+                    currentCountry: editCountry,
+                    currentRegion: editRegion,
+                    currentSubregion: editSubregion,
+                    currentType: editType,
+                    currentCategory: editCategory,
+                    currentReadyToTrinkYear: editReadyToTrinkYear,
+                    currentBestBeforeYear: editBestBeforeYear,
+                    currentRemarks: editRemarks
+                ) { accepted in
+                    if accepted {
+                        applyAISuggestion(suggestion)
+                    }
+                    pendingAISuggestion = nil
+                }
+            }
+        }
+        .alert("AI Error", isPresented: $showAIError) {
+            Button("OK") { }
+        } message: {
+            Text(aiErrorMessage ?? "Unknown error")
         }
         .overlay {
             if isShowingFullScreen, let image = selectedImage {
@@ -928,6 +977,78 @@ struct WineDetailView: View {
             }
             return "No data"
         }
+    }
+
+    // MARK: - AI Enrichment
+
+    private func triggerAIEnrichment() {
+        isAIEnriching = true
+        Task {
+            do {
+                let suggestion = try await AIService.shared.enrichWine(
+                    name: editName,
+                    producer: editProducer,
+                    vintage: editVintage,
+                    alcohol: editAlcohol,
+                    grapes: editGrapes,
+                    country: editCountry,
+                    region: editRegion,
+                    subregion: editSubregion,
+                    type: editType,
+                    category: editCategory,
+                    readyToTrinkYear: editReadyToTrinkYear,
+                    bestBeforeYear: editBestBeforeYear,
+                    remarks: editRemarks,
+                    apiKey: settings.aiApiKey,
+                    provider: settings.aiProvider,
+                    customBaseURL: settings.aiCustomBaseURL,
+                    model: settings.aiModel
+                )
+                await MainActor.run {
+                    isAIEnriching = false
+                    pendingAISuggestion = suggestion
+                    showAIPreview = true
+                }
+            } catch {
+                await MainActor.run {
+                    isAIEnriching = false
+                    aiErrorMessage = error.localizedDescription
+                    showAIError = true
+                }
+            }
+        }
+    }
+
+    private func applyAISuggestion(_ suggestion: AIWineSuggestion) {
+        if let v = suggestion.producer,      editProducer.isEmpty        { editProducer = v }
+        if let v = suggestion.vintage,       editVintage.isEmpty         { editVintage = v }
+        if let v = suggestion.alcohol,       editAlcohol.isEmpty         { editAlcohol = v }
+        if let v = suggestion.grapes,        editGrapes.isEmpty          { editGrapes = v }
+        if let v = suggestion.readyToTrinkYear, editReadyToTrinkYear.isEmpty { editReadyToTrinkYear = v }
+        if let v = suggestion.bestBeforeYear,   editBestBeforeYear.isEmpty   { editBestBeforeYear = v }
+        if let v = suggestion.remarks,       editRemarks.isEmpty         { editRemarks = v }
+
+        // Category
+        if let v = suggestion.category {
+            let validCategories = ["Red", "White", "Rosé", "Sparkling", "Dessert", "Port"]
+            if validCategories.contains(v) && editCategory.isEmpty { editCategory = v }
+        }
+
+        // Geography
+        if let country = suggestion.country, editCountry.isEmpty {
+            editCountry = country
+            wineRegions.updateRegions(for: country)
+        }
+        if let region = suggestion.region, editRegion.isEmpty, !editCountry.isEmpty {
+            editRegion = region
+            wineRegions.updateSubregions(for: editCountry, region: region)
+        }
+        if let subregion = suggestion.subregion, editSubregion.isEmpty,
+           !editCountry.isEmpty, !editRegion.isEmpty {
+            editSubregion = subregion
+            wineRegions.updateTypes(for: editCountry, region: editRegion, subregion: subregion)
+        }
+        if let type = suggestion.type, editType.isEmpty { editType = type }
     }
 }
 

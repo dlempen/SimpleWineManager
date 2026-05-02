@@ -38,6 +38,13 @@ struct AddWineView: View {
     @State private var selectedType = ""
     
     @State private var updatingFromSelection = false
+
+    // MARK: - AI state
+    @State private var isAIEnriching = false
+    @State private var aiErrorMessage: String?
+    @State private var showAIError = false
+    @State private var showAIPreview = false
+    @State private var pendingAISuggestion: AIWineSuggestion?
     
     init(historyService: WineHistoryService, copyFrom wine: Wine? = nil) {
         self.historyService = historyService
@@ -414,6 +421,23 @@ struct AddWineView: View {
                     dismiss()
                 }
             }
+            // AI enrichment button — only shown when API key is configured
+            if !settings.aiApiKey.isEmpty {
+                ToolbarItem(placement: .principal) {
+                    Button(action: triggerAIEnrichment) {
+                        if isAIEnriching {
+                            ProgressView()
+                                .scaleEffect(0.85)
+                        } else {
+                            Label("AI Fill", systemImage: "sparkles")
+                                .labelStyle(.titleAndIcon)
+                                .font(.subheadline.bold())
+                                .foregroundColor(.purple)
+                        }
+                    }
+                    .disabled(isAIEnriching || (name.isEmpty && producer.isEmpty))
+                }
+            }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
                     do {
@@ -441,10 +465,112 @@ struct AddWineView: View {
                 }
             })
         }
+        .sheet(isPresented: $showAIPreview) {
+            if let suggestion = pendingAISuggestion {
+                AIPreviewView(
+                    suggestion: suggestion,
+                    currentName: name,
+                    currentProducer: producer,
+                    currentVintage: vintage,
+                    currentAlcohol: alcohol,
+                    currentGrapes: grapes,
+                    currentCountry: selectedCountry,
+                    currentRegion: selectedRegion,
+                    currentSubregion: selectedSubregion,
+                    currentType: selectedType,
+                    currentCategory: selectedCategory,
+                    currentReadyToTrinkYear: readyToTrinkYear,
+                    currentBestBeforeYear: bestBeforeYear,
+                    currentRemarks: remarks
+                ) { accepted in
+                    if accepted {
+                        applyAISuggestion(suggestion)
+                    }
+                    pendingAISuggestion = nil
+                }
+            }
+        }
+        .alert("AI Error", isPresented: $showAIError) {
+            Button("OK") { }
+        } message: {
+            Text(aiErrorMessage ?? "Unknown error")
+        }
         .onAppear {
             // Convert bottle size to the user's preferred unit when the view appears
             convertBottleSizeOnAppear()
         }
+    }
+
+    // MARK: - AI Enrichment
+
+    private func triggerAIEnrichment() {
+        isAIEnriching = true
+        Task {
+            do {
+                let suggestion = try await AIService.shared.enrichWine(
+                    name: name,
+                    producer: producer,
+                    vintage: vintage,
+                    alcohol: alcohol,
+                    grapes: grapes,
+                    country: selectedCountry,
+                    region: selectedRegion,
+                    subregion: selectedSubregion,
+                    type: selectedType,
+                    category: selectedCategory,
+                    readyToTrinkYear: readyToTrinkYear,
+                    bestBeforeYear: bestBeforeYear,
+                    remarks: remarks,
+                    apiKey: settings.aiApiKey,
+                    provider: settings.aiProvider,
+                    customBaseURL: settings.aiCustomBaseURL,
+                    model: settings.aiModel
+                )
+                await MainActor.run {
+                    isAIEnriching = false
+                    pendingAISuggestion = suggestion
+                    showAIPreview = true
+                }
+            } catch {
+                await MainActor.run {
+                    isAIEnriching = false
+                    aiErrorMessage = error.localizedDescription
+                    showAIError = true
+                }
+            }
+        }
+    }
+
+    private func applyAISuggestion(_ suggestion: AIWineSuggestion) {
+        if let v = suggestion.producer,     producer.isEmpty        { producer = v }
+        if let v = suggestion.vintage,      vintage.isEmpty         { vintage = v }
+        if let v = suggestion.alcohol,      alcohol.isEmpty         { alcohol = v }
+        if let v = suggestion.grapes,       grapes.isEmpty          { grapes = v }
+        if let v = suggestion.readyToTrinkYear, readyToTrinkYear.isEmpty { readyToTrinkYear = v }
+        if let v = suggestion.bestBeforeYear,   bestBeforeYear.isEmpty   { bestBeforeYear = v }
+        if let v = suggestion.remarks,      remarks.isEmpty         { remarks = v }
+
+        // Category
+        if let v = suggestion.category, selectedCategory == "Red" {
+            let validCategories = ["Red", "White", "Rosé", "Sparkling", "Dessert", "Port"]
+            if validCategories.contains(v) { selectedCategory = v }
+        }
+
+        // Geography — apply in order: country → region → subregion → type
+        if let country = suggestion.country, selectedCountry.isEmpty {
+            selectedCountry = country
+            wineRegions.updateRegions(for: country)
+        }
+        if let region = suggestion.region, selectedRegion.isEmpty, !selectedCountry.isEmpty {
+            selectedRegion = region
+            wineRegions.updateSubregions(for: selectedCountry, region: region)
+        }
+        if let subregion = suggestion.subregion, selectedSubregion.isEmpty,
+           !selectedCountry.isEmpty, !selectedRegion.isEmpty {
+            selectedSubregion = subregion
+            wineRegions.updateTypes(for: selectedCountry, region: selectedRegion, subregion: subregion)
+        }
+        if let type = suggestion.type, selectedType.isEmpty { selectedType = type }
     }
 
     private func addWine() {

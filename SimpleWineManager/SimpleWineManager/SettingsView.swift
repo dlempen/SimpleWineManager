@@ -172,6 +172,44 @@ struct SettingsView: View {
                         }
                     }
                 }
+
+                Section(
+                    header: Text("AI Integration"),
+                    footer: Text("Your API key is stored locally on this device. The AI will fill in empty wine fields based on the information you've already entered.")
+                ) {
+                    Picker("Provider", selection: $settings.aiProvider) {
+                        ForEach(AIProvider.allCases, id: \.self) { provider in
+                            Text(provider.rawValue).tag(provider)
+                        }
+                    }
+
+                    if settings.aiProvider == .openAICompatible {
+                        HStack {
+                            Text("Base URL")
+                                .foregroundColor(.secondary)
+                            TextField("https://your-server/v1", text: $settings.aiCustomBaseURL)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                        }
+                    }
+
+                    HStack {
+                        Text("API Key")
+                            .foregroundColor(.secondary)
+                        SecureField("sk-...", text: $settings.aiApiKey)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                    }
+
+                    HStack {
+                        Text("Model")
+                            .foregroundColor(.secondary)
+                        TextField(settings.aiProvider.defaultModel, text: $settings.aiModel)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                    }
+                    .foregroundColor(.primary)
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
