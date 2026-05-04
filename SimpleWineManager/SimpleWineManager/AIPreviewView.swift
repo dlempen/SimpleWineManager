@@ -170,15 +170,15 @@ struct AIPreviewView: View {
                     }
                 } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: allSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(allSelected ? .purple : .secondary)
-                            .font(.title3)
                         Text(allSelected ? "Deselect all" : "Select all")
                             .foregroundColor(.primary)
                         Spacer()
                         Text("\(checked.count) of \(candidates.count) selected")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                        Image(systemName: allSelected ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(allSelected ? .purple : .secondary)
+                            .font(.title3)
                     }
                 }
                 .buttonStyle(.plain)
@@ -227,27 +227,29 @@ struct AIPreviewView: View {
 
     private func fieldRow(_ field: CandidateField) -> some View {
         let isOn = checked.contains(field.id)
-        return HStack(alignment: .top, spacing: 12) {
+        return HStack(alignment: .center, spacing: 12) {
+            // Icon + label/value on the left
+            Image(systemName: field.icon)
+                .foregroundColor(.purple.opacity(0.7))
+                .frame(width: 18)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(field.label)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(field.value)
+                    .font(.body)
+                    .foregroundColor(isOn ? .primary : Color(.systemGray3))
+                    .strikethrough(!isOn, color: Color(.systemGray3))
+            }
+
+            Spacer()
+
+            // Checkmark toggle on the right
             Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
                 .foregroundColor(isOn ? .purple : Color(.systemGray3))
                 .font(.title3)
-                .frame(width: 26)
-
-            HStack(alignment: .center, spacing: 8) {
-                Image(systemName: field.icon)
-                    .foregroundColor(.purple.opacity(0.7))
-                    .frame(width: 18)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(field.label)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text(field.value)
-                        .font(.body)
-                        .foregroundColor(isOn ? .primary : Color(.systemGray3))
-                        .strikethrough(!isOn, color: Color(.systemGray3))
-                }
-            }
-            Spacer()
+                .animation(.easeInOut(duration: 0.15), value: isOn)
         }
         .padding(.vertical, 3)
         .contentShape(Rectangle())
