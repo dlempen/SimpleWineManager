@@ -124,7 +124,8 @@ class AIService {
 
         switch provider {
         case .openAI:
-            // Hardcoded: gpt-4o-mini-search-preview with web search enabled
+            // Uses the Responses API with gpt-4.1 + web_search_preview tool.
+            // See callOpenAIChatAPI for full implementation notes.
             let prompt = buildPrompt(
                 name: name, producer: producer, vintage: vintage,
                 alcohol: alcohol, grapes: grapes, country: country,
@@ -235,10 +236,46 @@ Rules:
         prompt: String,
         apiKey: String
     ) async throws -> (content: String, sources: [AISearchSource]) {
-        let baseURL = "https://api.openai.com/v1"
-        let model   = "gpt-4o-mini-search-preview"
 
-        guard let url = URL(string: "\(baseURL)/chat/completions") else {
+        // ── Endpoint ────────────────────────────────────────────────────────
+        // We use the Responses API (POST /v1/responses) because it is the only
+        // OpenAI endpoint that accepts web search as an entry in the `tools` array.
+        //
+        // The Chat Completions API (/v1/chat/completions) uses a top-level
+        // `web_search_options` field — NOT a tools[] entry — and only works with
+        // the dedicated "search-preview" model family.
+        //
+        // ── Model ───────────────────────────────────────────────────────────
+        // gpt-4.1 is the latest generally-available model in the GPT-4 series
+        // (released April 2025) and supports the web_search_preview tool.
+        // NOTE: The user requested "gpt-5.5" which does not exist.
+        //       Update the model name here when a newer model becomes available.
+        //
+        // ── Tool ────────────────────────────────────────────────────────────
+        // Source: openai/openai-node — responses.ts WebSearchPreviewTool
+        //   { type: "web_search_preview", search_context_size: "low"|"medium"|"high" }
+        //
+        // ── Response structure ───────────────────────────────────────────────
+        // {
+        //   "output": [
+        //     { "type": "web_search_call", ... },          // tool call item
+        //     { "type": "message",                          // assistant message
+        //       "content": [
+        //         { "type": "output_text",
+        //           "text": "...",
+        //           "annotations": [
+        //             { "type": "url_citation",
+        //               "url": "https://...",
+        //               "title": "Page title",
+        //               "start_index": 0, "end_index": 42 }
+        //           ]
+        //         }
+        //       ]
+        //     }
+        //   ]
+        // }
+
+        guard let url = URL(string: "https://api.openai.com/v1/responses") else {
             throw AIServiceError.networkError("Invalid API URL")
         }
 
@@ -246,19 +283,19 @@ Rules:
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 60   // web search calls take longer
+        request.timeoutInterval = 60
 
-        // temperature is not supported on search-preview models — omit it entirely.
-        // web_search_options is the top-level parameter for Chat Completions web search;
-        // NOT a custom tool. Only search-preview models support it.
         let body: [String: Any] = [
-            "model": model,
-            "messages": [
+            "model": "gpt-4.1",
+            "input": [
                 ["role": "system", "content": "You are a helpful wine expert. You respond only with valid JSON."],
-                ["role": "user", "content": prompt]
+                ["role": "user",   "content": prompt]
             ],
-            "max_tokens": 600,
-            "web_search_options": ["search_context_size": "medium"]
+            // web_search_preview adds live web search to the tools array.
+            // search_context_size controls how much context window is reserved for results.
+            "tools": [
+                ["type": "web_search_preview", "search_context_size": "medium"]
+            ]
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -278,24 +315,44 @@ Rules:
             throw AIServiceError.apiError("HTTP \(httpResponse.statusCode)")
         }
 
+        // Parse Responses API output array
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = json["choices"] as? [[String: Any]],
-              let firstChoice = choices.first,
-              let message = firstChoice["message"] as? [String: Any],
-              let content = message["content"] as? String else {
+              let output = json["output"] as? [[String: Any]] else {
             throw AIServiceError.invalidResponse
         }
 
-        // Extract web search citations from annotations (OpenAI search-preview models)
+        var content = ""
         var sources: [AISearchSource] = []
-        if let annotations = message["annotations"] as? [[String: Any]] {
-            for annotation in annotations {
-                if let urlCitation = annotation["url_citation"] as? [String: Any],
-                   let urlStr = urlCitation["url"] as? String {
-                    let title = urlCitation["title"] as? String ?? urlStr
-                    sources.append(AISearchSource(title: title, url: urlStr))
+
+        for item in output {
+            // We only care about "message" type items (skip "web_search_call" items)
+            guard (item["type"] as? String) == "message",
+                  let contentItems = item["content"] as? [[String: Any]] else { continue }
+
+            for contentItem in contentItems {
+                guard (contentItem["type"] as? String) == "output_text" else { continue }
+
+                if let text = contentItem["text"] as? String {
+                    content += text
+                }
+
+                // Extract URL citations from annotations
+                if let annotations = contentItem["annotations"] as? [[String: Any]] {
+                    for annotation in annotations {
+                        guard (annotation["type"] as? String) == "url_citation",
+                              let urlStr = annotation["url"] as? String else { continue }
+                        let title = annotation["title"] as? String ?? urlStr
+                        // Deduplicate by URL
+                        if !sources.contains(where: { $0.url == urlStr }) {
+                            sources.append(AISearchSource(title: title, url: urlStr))
+                        }
+                    }
                 }
             }
+        }
+
+        guard !content.isEmpty else {
+            throw AIServiceError.invalidResponse
         }
 
         return (content, sources)
