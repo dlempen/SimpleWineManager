@@ -474,6 +474,7 @@ struct AddWineView: View {
                     currentVintage: vintage,
                     currentAlcohol: alcohol,
                     currentGrapes: grapes,
+                    currentPrice: price,
                     currentCountry: selectedCountry,
                     currentRegion: selectedRegion,
                     currentSubregion: selectedSubregion,
@@ -481,7 +482,8 @@ struct AddWineView: View {
                     currentCategory: selectedCategory,
                     currentReadyToTrinkYear: readyToTrinkYear,
                     currentBestBeforeYear: bestBeforeYear,
-                    currentRemarks: remarks
+                    currentRemarks: remarks,
+                    currencySymbol: settings.currencySymbol
                 ) { accepted in
                     if accepted {
                         applyAISuggestion(suggestion)
@@ -521,6 +523,7 @@ struct AddWineView: View {
                     readyToTrinkYear: readyToTrinkYear,
                     bestBeforeYear: bestBeforeYear,
                     remarks: remarks,
+                    currency: settings.selectedCurrency,
                     apiKey: settings.aiApiKey,
                     provider: settings.aiProvider,
                     customBaseURL: settings.aiCustomBaseURL,
@@ -546,6 +549,7 @@ struct AddWineView: View {
         if let v = suggestion.vintage,      vintage.isEmpty         { vintage = v }
         if let v = suggestion.alcohol,      alcohol.isEmpty         { alcohol = v }
         if let v = suggestion.grapes,       grapes.isEmpty          { grapes = v }
+        if let v = suggestion.price,        price.isEmpty           { price = v }
         if let v = suggestion.readyToTrinkYear, readyToTrinkYear.isEmpty { readyToTrinkYear = v }
         if let v = suggestion.bestBeforeYear,   bestBeforeYear.isEmpty   { bestBeforeYear = v }
         if let v = suggestion.remarks,      remarks.isEmpty         { remarks = v }

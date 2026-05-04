@@ -175,7 +175,7 @@ struct SettingsView: View {
 
                 Section(
                     header: Text("AI Integration"),
-                    footer: Text("Your API key is stored locally on this device. The AI will fill in empty wine fields based on the information you've already entered.")
+                    footer: Text("Your API key is stored locally on this device. The AI will fill in empty wine fields — including an average market price — based on the information you've already entered.\n\nWith OpenAI, models ending in \"-search-preview\" (e.g. gpt-4o-mini-search-preview) use live web search for up-to-date prices. Other models use training data only.")
                 ) {
                     Picker("Provider", selection: $settings.aiProvider) {
                         ForEach(AIProvider.allCases, id: \.self) { provider in

@@ -177,6 +177,7 @@ struct WineDetailView: View {
                     currentVintage: editVintage,
                     currentAlcohol: editAlcohol,
                     currentGrapes: editGrapes,
+                    currentPrice: editPrice,
                     currentCountry: editCountry,
                     currentRegion: editRegion,
                     currentSubregion: editSubregion,
@@ -184,7 +185,8 @@ struct WineDetailView: View {
                     currentCategory: editCategory,
                     currentReadyToTrinkYear: editReadyToTrinkYear,
                     currentBestBeforeYear: editBestBeforeYear,
-                    currentRemarks: editRemarks
+                    currentRemarks: editRemarks,
+                    currencySymbol: settings.currencySymbol
                 ) { accepted in
                     if accepted {
                         applyAISuggestion(suggestion)
@@ -999,6 +1001,7 @@ struct WineDetailView: View {
                     readyToTrinkYear: editReadyToTrinkYear,
                     bestBeforeYear: editBestBeforeYear,
                     remarks: editRemarks,
+                    currency: settings.selectedCurrency,
                     apiKey: settings.aiApiKey,
                     provider: settings.aiProvider,
                     customBaseURL: settings.aiCustomBaseURL,
@@ -1024,6 +1027,7 @@ struct WineDetailView: View {
         if let v = suggestion.vintage,       editVintage.isEmpty         { editVintage = v }
         if let v = suggestion.alcohol,       editAlcohol.isEmpty         { editAlcohol = v }
         if let v = suggestion.grapes,        editGrapes.isEmpty          { editGrapes = v }
+        if let v = suggestion.price,         editPrice.isEmpty           { editPrice = v }
         if let v = suggestion.readyToTrinkYear, editReadyToTrinkYear.isEmpty { editReadyToTrinkYear = v }
         if let v = suggestion.bestBeforeYear,   editBestBeforeYear.isEmpty   { editBestBeforeYear = v }
         if let v = suggestion.remarks,       editRemarks.isEmpty         { editRemarks = v }

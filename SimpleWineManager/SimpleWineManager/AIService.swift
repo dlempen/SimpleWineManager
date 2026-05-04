@@ -15,9 +15,17 @@ enum AIProvider: String, CaseIterable, Codable {
 
     var defaultModel: String {
         switch self {
-        case .openAI: return "gpt-4o-mini"
+        // gpt-4o-mini-search-preview supports web search and is cost-efficient
+        case .openAI: return "gpt-4o-mini-search-preview"
         case .openAICompatible: return "gpt-4o-mini"
         }
+    }
+
+    /// Returns true if the given model name supports the web_search_options parameter.
+    /// Only OpenAI's *-search-preview models support this; OpenAI-Compatible servers do not.
+    func supportsWebSearch(model: String) -> Bool {
+        guard self == .openAI else { return false }
+        return model.contains("search-preview")
     }
 }
 
@@ -36,6 +44,8 @@ struct AIWineSuggestion {
     var readyToTrinkYear: String?
     var bestBeforeYear: String?
     var remarks: String?
+    /// Average retail price in the user's chosen currency (numeric string, no symbol)
+    var price: String?
 }
 
 // MARK: - AI Service Errors
@@ -88,6 +98,7 @@ class AIService {
         readyToTrinkYear: String,
         bestBeforeYear: String,
         remarks: String,
+        currency: String,
         apiKey: String,
         provider: AIProvider,
         customBaseURL: String,
@@ -104,12 +115,16 @@ class AIService {
             throw AIServiceError.noUsefulFields
         }
 
+        let resolvedModel = model.isEmpty ? provider.defaultModel : model
+
         let prompt = buildPrompt(
             name: name, producer: producer, vintage: vintage,
             alcohol: alcohol, grapes: grapes, country: country,
             region: region, subregion: subregion, type: type,
             category: category, readyToTrinkYear: readyToTrinkYear,
-            bestBeforeYear: bestBeforeYear, remarks: remarks
+            bestBeforeYear: bestBeforeYear, remarks: remarks,
+            currency: currency,
+            webSearchEnabled: provider.supportsWebSearch(model: resolvedModel)
         )
 
         let baseURL = provider == .openAICompatible
@@ -120,7 +135,8 @@ class AIService {
             prompt: prompt,
             apiKey: apiKey,
             baseURL: baseURL,
-            model: model.isEmpty ? provider.defaultModel : model
+            model: resolvedModel,
+            useWebSearch: provider.supportsWebSearch(model: resolvedModel)
         )
 
         return parseSuggestion(from: responseText)
@@ -133,7 +149,9 @@ class AIService {
         alcohol: String, grapes: String, country: String,
         region: String, subregion: String, type: String,
         category: String, readyToTrinkYear: String,
-        bestBeforeYear: String, remarks: String
+        bestBeforeYear: String, remarks: String,
+        currency: String,
+        webSearchEnabled: Bool
     ) -> String {
 
         var knownLines: [String] = []
@@ -153,8 +171,22 @@ class AIService {
 
         let knownSection = knownLines.joined(separator: "\n")
 
+        // Extract just the currency code for the prompt (e.g. "EUR" from "EUR (€)")
+        let currencyCode: String
+        if let spaceIdx = currency.firstIndex(of: " ") {
+            currencyCode = String(currency[currency.startIndex..<spaceIdx])
+        } else {
+            currencyCode = currency
+        }
+
+        let webSearchNote = webSearchEnabled
+            ? "You have access to real-time web search. Use it to look up the current average retail price."
+            : "Use your training knowledge to estimate the average retail price."
+
         return """
-You are a wine expert assistant. Based on the information provided about a wine, fill in as many of the MISSING fields as possible using your knowledge.
+You are a wine expert assistant. Based on the information provided about a wine, fill in as many of the MISSING fields as possible.
+
+\(webSearchNote)
 
 Known information:
 \(knownSection)
@@ -177,6 +209,7 @@ The JSON must use exactly these keys (only include keys you can fill):
   "category": "Red | White | Rosé | Sparkling | Dessert | Port",
   "readyToTrinkYear": "YYYY",
   "bestBeforeYear": "YYYY",
+  "price": "...",
   "remarks": "Brief tasting notes or interesting facts about this wine."
 }
 
@@ -185,6 +218,7 @@ Rules:
 - "alcohol" must be a number only, no % sign (e.g. "13.5") or omit.
 - "readyToTrinkYear" and "bestBeforeYear" must be 4-digit year strings or omit.
 - "category" must be one of: Red, White, Rosé, Sparkling, Dessert, Port.
+- "price" must be the average retail price in \(currencyCode), as a plain number only (no currency symbol, no spaces). Example: "24.50". If you cannot find a reliable price, omit this field.
 - Only include fields that are MISSING from the known information above.
 """
     }
@@ -193,7 +227,8 @@ Rules:
         prompt: String,
         apiKey: String,
         baseURL: String,
-        model: String
+        model: String,
+        useWebSearch: Bool
     ) async throws -> String {
 
         guard let url = URL(string: "\(baseURL)/chat/completions") else {
@@ -204,17 +239,31 @@ Rules:
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        // Web search calls take longer — allow extra time
+        request.timeoutInterval = useWebSearch ? 60 : 30
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
             "messages": [
                 ["role": "system", "content": "You are a helpful wine expert. You respond only with valid JSON."],
                 ["role": "user", "content": prompt]
             ],
-            "temperature": 0.2,
-            "max_tokens": 500
+            "max_tokens": 600
         ]
+
+        // temperature is not supported on search-preview models; only add for regular models
+        if !useWebSearch {
+            body["temperature"] = 0.2
+        }
+
+        // Enable built-in web search when using a search-preview model.
+        // NOTE: This uses the "web_search_options" top-level parameter introduced by OpenAI
+        // for the Chat Completions API. It is NOT a custom function tool — passing
+        // `tools: ["web_search"]` would be incorrect. Only gpt-4o-search-preview and
+        // gpt-4o-mini-search-preview support this parameter; other models ignore it.
+        if useWebSearch {
+            body["web_search_options"] = ["search_context_size": "medium"]
+        }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -225,7 +274,6 @@ Rules:
         }
 
         if httpResponse.statusCode != 200 {
-            // Try to extract error message
             if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let errorObj = errorJson["error"] as? [String: Any],
                let message = errorObj["message"] as? String {
@@ -274,6 +322,7 @@ Rules:
         suggestion.readyToTrinkYear = json["readyToTrinkYear"]
         suggestion.bestBeforeYear  = json["bestBeforeYear"]
         suggestion.remarks         = json["remarks"]
+        suggestion.price           = json["price"]
 
         return suggestion
     }
