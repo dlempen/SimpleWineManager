@@ -87,28 +87,6 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var aiModel: String {
-        didSet {
-            UserDefaults.standard.set(aiModel, forKey: "aiModel")
-        }
-    }
-
-    @Published var aiCustomBaseURL: String {
-        didSet {
-            UserDefaults.standard.set(aiCustomBaseURL, forKey: "aiCustomBaseURL")
-        }
-    }
-
-    /// When enabled, the `web_search_options` parameter is sent with every AI request.
-    /// Turn this ON only when your chosen model actually supports web search
-    /// (e.g. gpt-4o-mini-search-preview, gpt-5, or any future search-capable model).
-    /// Sending it to a model that does not support it will cause an API error.
-    @Published var aiWebSearchEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(aiWebSearchEnabled, forKey: "aiWebSearchEnabled")
-        }
-    }
-    
     @Published var imageQuality: ImageQuality {
         didSet {
             UserDefaults.standard.set(imageQuality.rawValue, forKey: "imageQuality")
@@ -157,17 +135,7 @@ class SettingsStore: ObservableObject {
             self.aiProvider = .openAI
         }
         self.aiApiKey = UserDefaults.standard.string(forKey: "aiApiKey") ?? ""
-        self.aiModel = UserDefaults.standard.string(forKey: "aiModel") ?? ""
-        self.aiCustomBaseURL = UserDefaults.standard.string(forKey: "aiCustomBaseURL") ?? ""
 
-        // Default web search to true for OpenAI (where the default model supports it),
-        // but the user can toggle it freely.
-        if UserDefaults.standard.object(forKey: "aiWebSearchEnabled") != nil {
-            self.aiWebSearchEnabled = UserDefaults.standard.bool(forKey: "aiWebSearchEnabled")
-        } else {
-            self.aiWebSearchEnabled = true // sensible default: on for OpenAI search-preview default model
-        }
-        
         // Load image quality setting
         if let imageQualityString = UserDefaults.standard.string(forKey: "imageQuality"),
            let imageQuality = ImageQuality(rawValue: imageQualityString) {

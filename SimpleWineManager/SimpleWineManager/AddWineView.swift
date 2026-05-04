@@ -525,10 +525,7 @@ struct AddWineView: View {
                     remarks: remarks,
                     currency: settings.selectedCurrency,
                     apiKey: settings.aiApiKey,
-                    provider: settings.aiProvider,
-                    customBaseURL: settings.aiCustomBaseURL,
-                    model: settings.aiModel,
-                    webSearchEnabled: settings.aiWebSearchEnabled
+                    provider: settings.aiProvider
                 )
                 await MainActor.run {
                     isAIEnriching = false

@@ -175,48 +175,21 @@ struct SettingsView: View {
 
                 Section(
                     header: Text("AI Integration"),
-                    footer: Text("Your API key is stored locally on this device. The AI will fill in empty wine fields — including an average market price — based on the information you've already entered.")
+                    footer: Text(settings.aiProvider.apiKeyHint + "\n\nYour API key is stored locally on this device. The AI will fill in empty wine fields — including an average market price — based on the information you've already entered.")
                 ) {
                     Picker("Provider", selection: $settings.aiProvider) {
                         ForEach(AIProvider.allCases, id: \.self) { provider in
-                            Text(provider.rawValue).tag(provider)
-                        }
-                    }
-
-                    if settings.aiProvider == .openAICompatible {
-                        HStack {
-                            Text("Base URL")
-                                .foregroundColor(.secondary)
-                            TextField("https://your-server/v1", text: $settings.aiCustomBaseURL)
-                                .autocapitalization(.none)
-                                .disableAutocorrection(true)
+                            Label(provider.rawValue, systemImage: provider.systemImageName)
+                                .tag(provider)
                         }
                     }
 
                     HStack {
                         Text("API Key")
                             .foregroundColor(.secondary)
-                        SecureField("sk-...", text: $settings.aiApiKey)
+                        SecureField("Paste your API key…", text: $settings.aiApiKey)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
-                    }
-
-                    HStack {
-                        Text("Model")
-                            .foregroundColor(.secondary)
-                        TextField(settings.aiProvider.defaultModel, text: $settings.aiModel)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                    }
-                    .foregroundColor(.primary)
-
-                    Toggle(isOn: $settings.aiWebSearchEnabled) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Enable web search")
-                            Text("Sends web_search_options with every request. Only enable if your model supports it (e.g. gpt-4o-mini-search-preview, gpt-5).")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
                     }
                 }
             }

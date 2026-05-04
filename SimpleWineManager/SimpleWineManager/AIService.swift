@@ -3,21 +3,25 @@ import Foundation
 // MARK: - AI Provider
 
 enum AIProvider: String, CaseIterable, Codable {
-    case openAI = "OpenAI (ChatGPT)"
-    case openAICompatible = "OpenAI-Compatible"
+    case openAI    = "OpenAI"
+    case anthropic = "Anthropic Claude"
+    case gemini    = "Google Gemini"
 
-    var baseURL: String {
+    /// Hint text displayed below the API key field in Settings.
+    var apiKeyHint: String {
         switch self {
-        case .openAI: return "https://api.openai.com/v1"
-        case .openAICompatible: return "" // user-supplied
+        case .openAI:    return "Get your key at platform.openai.com"
+        case .anthropic: return "Get your key at console.anthropic.com"
+        case .gemini:    return "Get your key at aistudio.google.com"
         }
     }
 
-    var defaultModel: String {
+    /// SF Symbol name used as an icon in the provider picker.
+    var systemImageName: String {
         switch self {
-        // gpt-4o-mini-search-preview is cost-efficient and supports web search
-        case .openAI: return "gpt-4o-mini-search-preview"
-        case .openAICompatible: return "gpt-4o-mini"
+        case .openAI:    return "brain"
+        case .anthropic: return "sparkles"
+        case .gemini:    return "globe"
         }
     }
 }
@@ -49,6 +53,7 @@ enum AIServiceError: LocalizedError {
     case networkError(String)
     case invalidResponse
     case apiError(String)
+    case providerNotYetSupported(String)
 
     var errorDescription: String? {
         switch self {
@@ -62,6 +67,8 @@ enum AIServiceError: LocalizedError {
             return "The AI returned an unexpected response. Please try again."
         case .apiError(let msg):
             return "API error: \(msg)"
+        case .providerNotYetSupported(let name):
+            return "\(name) support is coming soon. Please use OpenAI for now."
         }
     }
 }
@@ -93,10 +100,7 @@ class AIService {
         remarks: String,
         currency: String,
         apiKey: String,
-        provider: AIProvider,
-        customBaseURL: String,
-        model: String,
-        webSearchEnabled: Bool
+        provider: AIProvider
     ) async throws -> AIWineSuggestion {
 
         guard !apiKey.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -108,31 +112,37 @@ class AIService {
             throw AIServiceError.noUsefulFields
         }
 
-        let resolvedModel = model.isEmpty ? provider.defaultModel : model
+        switch provider {
+        case .openAI:
+            // Hardcoded: gpt-4o-mini-search-preview with web search enabled
+            let prompt = buildPrompt(
+                name: name, producer: producer, vintage: vintage,
+                alcohol: alcohol, grapes: grapes, country: country,
+                region: region, subregion: subregion, type: type,
+                category: category, readyToTrinkYear: readyToTrinkYear,
+                bestBeforeYear: bestBeforeYear, remarks: remarks,
+                currency: currency
+            )
+            let responseText = try await callOpenAIChatAPI(prompt: prompt, apiKey: apiKey)
+            return parseSuggestion(from: responseText)
 
-        let prompt = buildPrompt(
-            name: name, producer: producer, vintage: vintage,
-            alcohol: alcohol, grapes: grapes, country: country,
-            region: region, subregion: subregion, type: type,
-            category: category, readyToTrinkYear: readyToTrinkYear,
-            bestBeforeYear: bestBeforeYear, remarks: remarks,
-            currency: currency,
-            webSearchEnabled: webSearchEnabled
-        )
+        case .anthropic:
+            // TODO: Implement Anthropic Claude support.
+            // Endpoint: POST https://api.anthropic.com/v1/messages
+            // Headers: x-api-key: <key>, anthropic-version: 2023-06-01, content-type: application/json
+            // Body: { "model": "claude-opus-4-5", "max_tokens": 600,
+            //         "messages": [{ "role": "user", "content": prompt }] }
+            // Response: json["content"][0]["text"]
+            throw AIServiceError.providerNotYetSupported("Anthropic Claude")
 
-        let baseURL = provider == .openAICompatible
-            ? customBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-            : provider.baseURL
-
-        let responseText = try await callChatAPI(
-            prompt: prompt,
-            apiKey: apiKey,
-            baseURL: baseURL,
-            model: resolvedModel,
-            useWebSearch: webSearchEnabled
-        )
-
-        return parseSuggestion(from: responseText)
+        case .gemini:
+            // TODO: Implement Google Gemini support.
+            // Endpoint: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=<key>
+            // Headers: content-type: application/json
+            // Body: { "contents": [{ "parts": [{ "text": prompt }] }] }
+            // Response: json["candidates"][0]["content"]["parts"][0]["text"]
+            throw AIServiceError.providerNotYetSupported("Google Gemini")
+        }
     }
 
     // MARK: - Private helpers
@@ -143,8 +153,7 @@ class AIService {
         region: String, subregion: String, type: String,
         category: String, readyToTrinkYear: String,
         bestBeforeYear: String, remarks: String,
-        currency: String,
-        webSearchEnabled: Bool
+        currency: String
     ) -> String {
 
         var knownLines: [String] = []
@@ -172,14 +181,10 @@ class AIService {
             currencyCode = currency
         }
 
-        let webSearchNote = webSearchEnabled
-            ? "You have access to real-time web search. Use it to look up the current average retail price."
-            : "Use your training knowledge to estimate the average retail price."
-
         return """
 You are a wine expert assistant. Based on the information provided about a wine, fill in as many of the MISSING fields as possible.
 
-\(webSearchNote)
+You have access to real-time web search. Use it to look up the current average retail price.
 
 Known information:
 \(knownSection)
@@ -216,47 +221,35 @@ Rules:
 """
     }
 
-    private func callChatAPI(
+    private func callOpenAIChatAPI(
         prompt: String,
-        apiKey: String,
-        baseURL: String,
-        model: String,
-        useWebSearch: Bool
+        apiKey: String
     ) async throws -> String {
+        let baseURL = "https://api.openai.com/v1"
+        let model   = "gpt-4o-mini-search-preview"
 
         guard let url = URL(string: "\(baseURL)/chat/completions") else {
-            throw AIServiceError.networkError("Invalid API URL: \(baseURL)/chat/completions")
+            throw AIServiceError.networkError("Invalid API URL")
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        // Web search calls take longer — allow extra time
-        request.timeoutInterval = useWebSearch ? 60 : 30
+        request.timeoutInterval = 60   // web search calls take longer
 
-        var body: [String: Any] = [
+        // temperature is not supported on search-preview models — omit it entirely.
+        // web_search_options is the top-level parameter for Chat Completions web search;
+        // NOT a custom tool. Only search-preview models support it.
+        let body: [String: Any] = [
             "model": model,
             "messages": [
                 ["role": "system", "content": "You are a helpful wine expert. You respond only with valid JSON."],
                 ["role": "user", "content": prompt]
             ],
-            "max_tokens": 600
+            "max_tokens": 600,
+            "web_search_options": ["search_context_size": "medium"]
         ]
-
-        // temperature is not supported on search-preview models; only add for regular models
-        if !useWebSearch {
-            body["temperature"] = 0.2
-        }
-
-        // Enable built-in web search when using a search-preview model.
-        // NOTE: This uses the "web_search_options" top-level parameter introduced by OpenAI
-        // for the Chat Completions API. It is NOT a custom function tool — passing
-        // `tools: ["web_search"]` would be incorrect. Only gpt-4o-search-preview and
-        // gpt-4o-mini-search-preview support this parameter; other models ignore it.
-        if useWebSearch {
-            body["web_search_options"] = ["search_context_size": "medium"]
-        }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
