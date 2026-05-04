@@ -1005,7 +1005,8 @@ struct WineDetailView: View {
                     apiKey: settings.aiApiKey,
                     provider: settings.aiProvider,
                     customBaseURL: settings.aiCustomBaseURL,
-                    model: settings.aiModel
+                    model: settings.aiModel,
+                    webSearchEnabled: settings.aiWebSearchEnabled
                 )
                 await MainActor.run {
                     isAIEnriching = false

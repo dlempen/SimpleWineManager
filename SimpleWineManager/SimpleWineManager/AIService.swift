@@ -15,17 +15,10 @@ enum AIProvider: String, CaseIterable, Codable {
 
     var defaultModel: String {
         switch self {
-        // gpt-4o-mini-search-preview supports web search and is cost-efficient
+        // gpt-4o-mini-search-preview is cost-efficient and supports web search
         case .openAI: return "gpt-4o-mini-search-preview"
         case .openAICompatible: return "gpt-4o-mini"
         }
-    }
-
-    /// Returns true if the given model name supports the web_search_options parameter.
-    /// Only OpenAI's *-search-preview models support this; OpenAI-Compatible servers do not.
-    func supportsWebSearch(model: String) -> Bool {
-        guard self == .openAI else { return false }
-        return model.contains("search-preview")
     }
 }
 
@@ -102,14 +95,14 @@ class AIService {
         apiKey: String,
         provider: AIProvider,
         customBaseURL: String,
-        model: String
+        model: String,
+        webSearchEnabled: Bool
     ) async throws -> AIWineSuggestion {
 
         guard !apiKey.trimmingCharacters(in: .whitespaces).isEmpty else {
             throw AIServiceError.notConfigured
         }
 
-        // Require at least name or producer
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty ||
               !producer.trimmingCharacters(in: .whitespaces).isEmpty else {
             throw AIServiceError.noUsefulFields
@@ -124,7 +117,7 @@ class AIService {
             category: category, readyToTrinkYear: readyToTrinkYear,
             bestBeforeYear: bestBeforeYear, remarks: remarks,
             currency: currency,
-            webSearchEnabled: provider.supportsWebSearch(model: resolvedModel)
+            webSearchEnabled: webSearchEnabled
         )
 
         let baseURL = provider == .openAICompatible
@@ -136,7 +129,7 @@ class AIService {
             apiKey: apiKey,
             baseURL: baseURL,
             model: resolvedModel,
-            useWebSearch: provider.supportsWebSearch(model: resolvedModel)
+            useWebSearch: webSearchEnabled
         )
 
         return parseSuggestion(from: responseText)
