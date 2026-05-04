@@ -484,9 +484,9 @@ struct AddWineView: View {
                     currentBestBeforeYear: bestBeforeYear,
                     currentRemarks: remarks,
                     currencySymbol: settings.currencySymbol
-                ) { accepted in
-                    if accepted {
-                        applyAISuggestion(suggestion)
+                ) { filtered in
+                    if let filtered {
+                        applyAISuggestion(filtered)
                     }
                     pendingAISuggestion = nil
                 }
@@ -543,36 +543,38 @@ struct AddWineView: View {
     }
 
     private func applyAISuggestion(_ suggestion: AIWineSuggestion) {
-        if let v = suggestion.producer,     producer.isEmpty        { producer = v }
-        if let v = suggestion.vintage,      vintage.isEmpty         { vintage = v }
-        if let v = suggestion.alcohol,      alcohol.isEmpty         { alcohol = v }
-        if let v = suggestion.grapes,       grapes.isEmpty          { grapes = v }
-        if let v = suggestion.price,        price.isEmpty           { price = v }
-        if let v = suggestion.readyToTrinkYear, readyToTrinkYear.isEmpty { readyToTrinkYear = v }
-        if let v = suggestion.bestBeforeYear,   bestBeforeYear.isEmpty   { bestBeforeYear = v }
-        if let v = suggestion.remarks,      remarks.isEmpty         { remarks = v }
+        // The suggestion has already been filtered by the user in AIPreviewView —
+        // only fields they checked are non-nil here, so apply unconditionally
+        // (still guard empty for safety on fields the user might have typed meanwhile).
+        if let v = suggestion.producer     { producer        = v }
+        if let v = suggestion.vintage      { vintage         = v }
+        if let v = suggestion.alcohol      { alcohol         = v }
+        if let v = suggestion.grapes       { grapes          = v }
+        if let v = suggestion.price        { price           = v }
+        if let v = suggestion.readyToTrinkYear { readyToTrinkYear = v }
+        if let v = suggestion.bestBeforeYear   { bestBeforeYear   = v }
+        if let v = suggestion.remarks      { remarks         = v }
 
         // Category
-        if let v = suggestion.category, selectedCategory == "Red" {
+        if let v = suggestion.category {
             let validCategories = ["Red", "White", "Rosé", "Sparkling", "Dessert", "Port"]
             if validCategories.contains(v) { selectedCategory = v }
         }
 
-        // Geography — apply in order: country → region → subregion → type
-        if let country = suggestion.country, selectedCountry.isEmpty {
+        // Geography — apply in order so pickers cascade correctly
+        if let country = suggestion.country {
             selectedCountry = country
             wineRegions.updateRegions(for: country)
         }
-        if let region = suggestion.region, selectedRegion.isEmpty, !selectedCountry.isEmpty {
+        if let region = suggestion.region, !selectedCountry.isEmpty {
             selectedRegion = region
             wineRegions.updateSubregions(for: selectedCountry, region: region)
         }
-        if let subregion = suggestion.subregion, selectedSubregion.isEmpty,
-           !selectedCountry.isEmpty, !selectedRegion.isEmpty {
+        if let subregion = suggestion.subregion, !selectedCountry.isEmpty, !selectedRegion.isEmpty {
             selectedSubregion = subregion
             wineRegions.updateTypes(for: selectedCountry, region: selectedRegion, subregion: subregion)
         }
-        if let type = suggestion.type, selectedType.isEmpty { selectedType = type }
+        if let type = suggestion.type { selectedType = type }
     }
 
     private func addWine() {

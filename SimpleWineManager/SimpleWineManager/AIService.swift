@@ -26,6 +26,14 @@ enum AIProvider: String, CaseIterable, Codable {
     }
 }
 
+// MARK: - AI Search Source (web citation)
+
+struct AISearchSource: Identifiable {
+    let id = UUID()
+    let title: String
+    let url: String
+}
+
 // MARK: - AI Wine Suggestion
 
 struct AIWineSuggestion {
@@ -43,6 +51,8 @@ struct AIWineSuggestion {
     var remarks: String?
     /// Average retail price in the user's chosen currency (numeric string, no symbol)
     var price: String?
+    /// Web search citations returned by the API
+    var sources: [AISearchSource] = []
 }
 
 // MARK: - AI Service Errors
@@ -123,8 +133,8 @@ class AIService {
                 bestBeforeYear: bestBeforeYear, remarks: remarks,
                 currency: currency
             )
-            let responseText = try await callOpenAIChatAPI(prompt: prompt, apiKey: apiKey)
-            return parseSuggestion(from: responseText)
+            let (responseText, sources) = try await callOpenAIChatAPI(prompt: prompt, apiKey: apiKey)
+            return parseSuggestion(from: responseText, sources: sources)
 
         case .anthropic:
             // TODO: Implement Anthropic Claude support.
@@ -224,7 +234,7 @@ Rules:
     private func callOpenAIChatAPI(
         prompt: String,
         apiKey: String
-    ) async throws -> String {
+    ) async throws -> (content: String, sources: [AISearchSource]) {
         let baseURL = "https://api.openai.com/v1"
         let model   = "gpt-4o-mini-search-preview"
 
@@ -276,10 +286,22 @@ Rules:
             throw AIServiceError.invalidResponse
         }
 
-        return content
+        // Extract web search citations from annotations (OpenAI search-preview models)
+        var sources: [AISearchSource] = []
+        if let annotations = message["annotations"] as? [[String: Any]] {
+            for annotation in annotations {
+                if let urlCitation = annotation["url_citation"] as? [String: Any],
+                   let urlStr = urlCitation["url"] as? String {
+                    let title = urlCitation["title"] as? String ?? urlStr
+                    sources.append(AISearchSource(title: title, url: urlStr))
+                }
+            }
+        }
+
+        return (content, sources)
     }
 
-    private func parseSuggestion(from text: String) -> AIWineSuggestion {
+    private func parseSuggestion(from text: String, sources: [AISearchSource]) -> AIWineSuggestion {
         var suggestion = AIWineSuggestion()
 
         // Strip markdown code fences if present
@@ -309,6 +331,7 @@ Rules:
         suggestion.bestBeforeYear  = json["bestBeforeYear"]
         suggestion.remarks         = json["remarks"]
         suggestion.price           = json["price"]
+        suggestion.sources         = sources
 
         return suggestion
     }
