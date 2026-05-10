@@ -421,22 +421,27 @@ struct AddWineView: View {
                     dismiss()
                 }
             }
-            // AI enrichment button — only shown when API key is configured
-            if !settings.aiApiKey.isEmpty {
-                ToolbarItem(placement: .principal) {
-                    Button(action: triggerAIEnrichment) {
-                        if isAIEnriching {
-                            ProgressView()
-                                .scaleEffect(0.85)
-                        } else {
-                            Label("AI Fill", systemImage: "sparkles")
-                                .labelStyle(.titleAndIcon)
-                                .font(.subheadline.bold())
-                                .foregroundColor(.purple)
-                        }
+            // AI enrichment button — always shown; prompts to set API key if missing
+            ToolbarItem(placement: .principal) {
+                Button(action: {
+                    if settings.aiApiKey.isEmpty {
+                        aiErrorMessage = "Please add your AI API key in Settings → AI."
+                        showAIError = true
+                    } else {
+                        triggerAIEnrichment()
                     }
-                    .disabled(isAIEnriching || (name.isEmpty && producer.isEmpty))
+                }) {
+                    if isAIEnriching {
+                        ProgressView()
+                            .scaleEffect(0.85)
+                    } else {
+                        Label("AI Fill", systemImage: "sparkles")
+                            .labelStyle(.titleAndIcon)
+                            .font(.subheadline.bold())
+                            .foregroundColor(.purple)
+                    }
                 }
+                .disabled(isAIEnriching || (name.isEmpty && producer.isEmpty))
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {

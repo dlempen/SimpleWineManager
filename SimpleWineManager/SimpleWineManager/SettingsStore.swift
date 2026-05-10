@@ -82,8 +82,13 @@ class SettingsStore: ObservableObject {
 
     @Published var aiApiKey: String {
         didSet {
-            // Store in Keychain for security; fall back to UserDefaults for simplicity
-            UserDefaults.standard.set(aiApiKey, forKey: "aiApiKey")
+            if aiApiKey.isEmpty {
+                KeychainHelper.delete(forKey: "aiApiKey")
+            } else {
+                KeychainHelper.save(aiApiKey, forKey: "aiApiKey")
+            }
+            // Remove any legacy value that may have been stored in UserDefaults
+            UserDefaults.standard.removeObject(forKey: "aiApiKey")
         }
     }
 
@@ -134,7 +139,17 @@ class SettingsStore: ObservableObject {
         } else {
             self.aiProvider = .openAI
         }
-        self.aiApiKey = UserDefaults.standard.string(forKey: "aiApiKey") ?? ""
+        // Read API key from Keychain; fall back to any legacy UserDefaults value and migrate it.
+        if let keychainKey = KeychainHelper.read(forKey: "aiApiKey") {
+            self.aiApiKey = keychainKey
+        } else if let legacyKey = UserDefaults.standard.string(forKey: "aiApiKey"), !legacyKey.isEmpty {
+            // Migrate the old UserDefaults value into the Keychain once, then remove it.
+            KeychainHelper.save(legacyKey, forKey: "aiApiKey")
+            UserDefaults.standard.removeObject(forKey: "aiApiKey")
+            self.aiApiKey = legacyKey
+        } else {
+            self.aiApiKey = ""
+        }
 
         // Load image quality setting
         if let imageQualityString = UserDefaults.standard.string(forKey: "imageQuality"),

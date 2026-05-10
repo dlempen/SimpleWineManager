@@ -175,19 +175,12 @@ struct SettingsView: View {
 
                 Section(
                     header: Text("AI Integration"),
-                    footer: Text(settings.aiProvider.apiKeyHint + "\n\nYour API key is stored locally on this device. The AI will fill in empty wine fields — including an average market price — based on the information you've already entered.")
+                    footer: Text("Powered by OpenAI. Get your free API key at platform.openai.com → API keys.\n\nYour API key is stored securely in the device Keychain — never in plain text. The AI uses web search to fill in empty wine fields (producer, vintage, region, grapes, drink window, price, and more) based on what you've already entered.")
                 ) {
-                    Picker("Provider", selection: $settings.aiProvider) {
-                        ForEach(AIProvider.allCases, id: \.self) { provider in
-                            Label(provider.rawValue, systemImage: provider.systemImageName)
-                                .tag(provider)
-                        }
-                    }
-
                     HStack {
                         Text("API Key")
                             .foregroundColor(.secondary)
-                        SecureField("Paste your API key…", text: $settings.aiApiKey)
+                        SecureField("Paste your OpenAI key…", text: $settings.aiApiKey)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
                     }

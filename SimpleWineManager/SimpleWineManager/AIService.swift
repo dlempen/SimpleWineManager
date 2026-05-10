@@ -3,26 +3,16 @@ import Foundation
 // MARK: - AI Provider
 
 enum AIProvider: String, CaseIterable, Codable {
-    case openAI    = "OpenAI"
-    case anthropic = "Anthropic Claude"
-    case gemini    = "Google Gemini"
+    case openAI = "OpenAI"
 
     /// Hint text displayed below the API key field in Settings.
     var apiKeyHint: String {
-        switch self {
-        case .openAI:    return "Get your key at platform.openai.com"
-        case .anthropic: return "Get your key at console.anthropic.com"
-        case .gemini:    return "Get your key at aistudio.google.com"
-        }
+        return "Get your free API key at platform.openai.com → API keys"
     }
 
-    /// SF Symbol name used as an icon in the provider picker.
+    /// SF Symbol name used as an icon.
     var systemImageName: String {
-        switch self {
-        case .openAI:    return "brain"
-        case .anthropic: return "sparkles"
-        case .gemini:    return "globe"
-        }
+        return "brain"
     }
 }
 
@@ -136,23 +126,6 @@ class AIService {
             )
             let (responseText, sources) = try await callOpenAIChatAPI(prompt: prompt, apiKey: apiKey)
             return parseSuggestion(from: responseText, sources: sources)
-
-        case .anthropic:
-            // TODO: Implement Anthropic Claude support.
-            // Endpoint: POST https://api.anthropic.com/v1/messages
-            // Headers: x-api-key: <key>, anthropic-version: 2023-06-01, content-type: application/json
-            // Body: { "model": "claude-opus-4-5", "max_tokens": 600,
-            //         "messages": [{ "role": "user", "content": prompt }] }
-            // Response: json["content"][0]["text"]
-            throw AIServiceError.providerNotYetSupported("Anthropic Claude")
-
-        case .gemini:
-            // TODO: Implement Google Gemini support.
-            // Endpoint: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=<key>
-            // Headers: content-type: application/json
-            // Body: { "contents": [{ "parts": [{ "text": prompt }] }] }
-            // Response: json["candidates"][0]["content"]["parts"][0]["text"]
-            throw AIServiceError.providerNotYetSupported("Google Gemini")
         }
     }
 

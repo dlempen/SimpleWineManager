@@ -5,7 +5,7 @@ A privacy-focused iOS app for managing your personal wine collection. Store, org
 ![iOS](https://img.shields.io/badge/iOS-18.0+-blue.svg)
 ![Swift](https://img.shields.io/badge/Swift-5.0+-orange.svg)
 ![AI Powered](https://img.shields.io/badge/Built%20with-GitHub%20Copilot-purple.svg)
-![Version](https://img.shields.io/badge/Version-2.7%20Dev-orange.svg)
+![Version](https://img.shields.io/badge/Version-3.0-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## 🤖 Built with AI
@@ -14,13 +14,22 @@ A privacy-focused iOS app for managing your personal wine collection. Store, org
 
 ## Features
 
+### ✨ AI-Powered Wine Enrichment (New in v3.0)
+- **✨ AI Fill Button**: Automatically look up and fill in missing wine details with a single tap — powered by OpenAI with live web search
+- **Smart Field Detection**: AI only suggests values for fields that are empty, never overwriting data you've already entered
+- **Per-Field Preview**: Review every AI suggestion before applying — check or uncheck individual fields in a preview screen
+- **Web Sources**: See exactly which web pages the AI used, with tappable links to verify information
+- **Fields Enriched**: Producer, vintage, grapes, country, region, sub-region, type, category, alcohol, drink window, best-before year, tasting notes, and average market price
+- **Secure Key Storage**: Your OpenAI API key is stored exclusively in the iOS Keychain — never in plain text
+- **Bring Your Own Key**: Uses your personal OpenAI API key — no subscription, no middleman, full control
+
 ### 🍾 Wine Collection Management
 - **Complete Wine Details**: Store name, producer, vintage, alcohol content, region, type, and more
 - **Photo Support**: Take photos of wine labels or select from your photo library
 - **Smart Categories**: Organize by Red, White, Rosé, Sparkling, Dessert, and Port wines
 - **Quantity Tracking**: Monitor your wine inventory with easy consume functionality
 
-### 🗂️ Organization & Search
+### 🗂️ Organisation & Search
 - **Advanced Sorting**: Sort by any field including drink dates and best before dates
 - **Smart Search**: Find wines quickly with real-time search
 - **Regional Classification**: Comprehensive wine regions database with autocomplete
@@ -39,9 +48,9 @@ A privacy-focused iOS app for managing your personal wine collection. Store, org
 
 ### 🔒 Privacy First
 - **Local Storage Only**: All data stays on your device using Core Data
-- **No Internet Required**: Works completely offline
 - **No Analytics**: Zero tracking or data collection
-- **No Third-Party Services**: No external dependencies
+- **Keychain Security**: Sensitive credentials stored in the iOS Keychain with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
+- **Optional AI**: The AI feature is entirely opt-in and requires your own API key
 
 ### 📄 Import/Export
 - **Data Backup**: Export your collection for safekeeping
@@ -59,12 +68,15 @@ A privacy-focused iOS app for managing your personal wine collection. Store, org
 - **Framework**: SwiftUI with UIKit components
 - **Database**: Core Data for local storage
 - **Image Processing**: Vision framework for label text recognition
-- **No External Dependencies**: Pure iOS SDK implementation
+- **AI Integration**: OpenAI Responses API (`gpt-4.1`) with `web_search_preview` tool
+- **Secure Storage**: iOS Keychain for API key storage (`Security` framework)
+- **No External Swift Packages**: Pure iOS SDK implementation
 
 ### Privacy & Security
 - **Local Data Storage**: Uses iOS Core Data framework
 - **Device Encryption**: Leverages iOS built-in encryption
-- **No Network Communication**: Zero internet connectivity
+- **Keychain for Secrets**: API key stored with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
+- **Opt-in Network Use**: Network is only used when you explicitly tap ✨ AI Fill
 - **GDPR/CCPA Compliant**: Privacy-by-design architecture
 
 ## Installation
@@ -106,10 +118,14 @@ SimpleWineManager/
 ## Development
 
 ### Version History
-- **v2.4** (In Development): New features and improvements coming soon
-- **v2.3** (Current - App Store): Improved UI consistency and search capabilities
+- **v3.0** (Current): AI-powered wine enrichment via OpenAI, Keychain API key storage, simplified AI UX
+- **v2.8**: Statistics performance optimisation, advanced search improvements
+- **v2.7**: Grapes field integration, bottle size unit conversion
+- **v2.6**: Print support, UI refinements
+- **v2.5**: Advanced search filters
+- **v2.4**: CSV import/export, data portability
+- **v2.3**: Improved UI consistency and search capabilities
 - **v2.2**: Enhanced wine classification system
-- **v2.1**: Core functionality and data model
 - **v2.1**: Core functionality and data model
 
 ### Contributing

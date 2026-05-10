@@ -121,18 +121,23 @@ struct WineDetailView: View {
         .toolbar {
             if isEditing {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    // AI button — only when API key configured
-                    if !settings.aiApiKey.isEmpty {
-                        Button(action: triggerAIEnrichment) {
-                            if isAIEnriching {
-                                ProgressView().scaleEffect(0.85)
-                            } else {
-                                Label("AI Fill", systemImage: "sparkles")
-                                    .foregroundColor(.purple)
-                            }
+                    // AI button — always shown; prompts to set API key if missing
+                    Button(action: {
+                        if settings.aiApiKey.isEmpty {
+                            aiErrorMessage = "Please add your AI API key in Settings → AI."
+                            showAIError = true
+                        } else {
+                            triggerAIEnrichment()
                         }
-                        .disabled(isAIEnriching || (editName.isEmpty && editProducer.isEmpty))
+                    }) {
+                        if isAIEnriching {
+                            ProgressView().scaleEffect(0.85)
+                        } else {
+                            Label("AI Fill", systemImage: "sparkles")
+                                .foregroundColor(.purple)
+                        }
                     }
+                    .disabled(isAIEnriching || (editName.isEmpty && editProducer.isEmpty))
                     Button("Save") {
                         saveChanges()
                     }

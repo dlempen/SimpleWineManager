@@ -242,6 +242,52 @@ Wine Manager allows you to customize how your wine collection is displayed and o
 """
         ),
         ManualSectionData(
+            id: "ai-fill",
+            title: "AI Fill — Auto-complete Wine Details",
+            content: """
+The ✨ AI Fill button uses OpenAI to automatically look up and fill in missing information about a wine based on the name and/or producer you've already entered.
+
+**What it fills in:**
+• Producer / winery name
+• Vintage year
+• Grape variety / blend
+• Country and region
+• Sub-region / appellation
+• Wine type and category
+• Alcohol content
+• Drink-from and best-before years
+• Tasting notes and remarks
+• Average market price
+
+**How to use it:**
+1. Start adding or editing a wine — enter at least the wine name or producer
+2. Tap the **✨ AI Fill** button in the toolbar
+3. Wait a moment while the AI searches the web for information
+4. A preview screen appears showing everything the AI found
+5. Each field has a checkmark on the right — uncheck any field you don't want to apply
+6. Tap **Apply** to copy the selected fields into your wine entry
+
+**Tips:**
+• The more detail you enter first (name + producer + vintage), the better the results
+• Already-filled fields are not overwritten unless you explicitly check them in the preview
+• The Sources section at the bottom of the preview lists the web pages the AI used — tap any link to verify the information
+• AI suggestions are a starting point — always review before saving
+
+**Getting an OpenAI API key:**
+1. Go to **platform.openai.com** in your browser
+2. Sign in or create a free account
+3. Navigate to **API keys** in the left sidebar (or visit platform.openai.com/api-keys directly)
+4. Click **Create new secret key**, give it a name, and copy it
+5. In Wine Manager, open **Settings → AI Integration** and paste your key into the API Key field
+6. Your key is stored securely in the device Keychain — it never leaves your device in plain text
+
+**Usage and cost:**
+• OpenAI charges a small amount per request (typically a fraction of a cent per wine lookup)
+• New accounts receive free credits to get started
+• You can monitor your usage at platform.openai.com/usage
+"""
+        ),
+        ManualSectionData(
             id: "import-export",
             title: "Import and Export",
             content: """
@@ -364,6 +410,7 @@ Share and backup your wine collection data:
                                 .padding(.horizontal)
                             
                             VStack(alignment: .leading, spacing: 8) {
+                                TipRow(icon: "sparkles", text: "Use ✨ AI Fill to auto-complete wine details — just enter the name or producer first")
                                 TipRow(icon: "camera", text: "Take clear photos of wine labels for easy identification")
                                 TipRow(icon: "star", text: "Rate wines immediately after tasting for accurate records")
                                 TipRow(icon: "square.and.pencil", text: "Keep detailed tasting notes to track your preferences")
