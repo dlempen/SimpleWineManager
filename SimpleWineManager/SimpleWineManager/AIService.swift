@@ -192,7 +192,10 @@ The JSON must use exactly these keys (only include keys you can fill):
   "readyToTrinkYear": "YYYY",
   "bestBeforeYear": "YYYY",
   "price": "...",
-  "remarks": "Brief tasting notes or interesting facts about this wine."
+  "remarks": "Brief tasting notes or interesting facts about this wine.",
+  "sources": [
+    { "title": "Page title", "url": "https://..." }
+  ]
 }
 
 Rules:
@@ -201,6 +204,7 @@ Rules:
 - "readyToTrinkYear" and "bestBeforeYear" must be 4-digit year strings or omit.
 - "category" must be one of: Red, White, Rosé, Sparkling, Dessert, Port.
 - "price" must be the average retail price in \(currencyCode), as a plain number only (no currency symbol, no spaces). Example: "24.50". If you cannot find a reliable price, omit this field.
+- "sources" must be an array of objects with "title" and "url" fields, listing the web pages you consulted. Include at least the page you used to look up the price. Omit "sources" only if you performed no web search.
 - Only include fields that are MISSING from the known information above.
 """
     }
@@ -331,7 +335,7 @@ Rules:
         return (content, sources)
     }
 
-    private func parseSuggestion(from text: String, sources: [AISearchSource]) -> AIWineSuggestion {
+    private func parseSuggestion(from text: String, sources annotationSources: [AISearchSource]) -> AIWineSuggestion {
         var suggestion = AIWineSuggestion()
 
         // Strip markdown code fences if present
@@ -344,24 +348,44 @@ Rules:
         }
 
         guard let data = cleaned.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: String] else {
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             return suggestion
         }
 
-        suggestion.producer        = json["producer"]
-        suggestion.vintage         = json["vintage"]
-        suggestion.alcohol         = json["alcohol"]
-        suggestion.grapes          = json["grapes"]
-        suggestion.country         = json["country"]
-        suggestion.region          = json["region"]
-        suggestion.subregion       = json["subregion"]
-        suggestion.type            = json["type"]
-        suggestion.category        = json["category"]
-        suggestion.readyToTrinkYear = json["readyToTrinkYear"]
-        suggestion.bestBeforeYear  = json["bestBeforeYear"]
-        suggestion.remarks         = json["remarks"]
-        suggestion.price           = json["price"]
-        suggestion.sources         = sources
+        // String fields
+        suggestion.producer         = json["producer"]         as? String
+        suggestion.vintage          = json["vintage"]          as? String
+        suggestion.alcohol          = json["alcohol"]          as? String
+        suggestion.grapes           = json["grapes"]           as? String
+        suggestion.country          = json["country"]          as? String
+        suggestion.region           = json["region"]           as? String
+        suggestion.subregion        = json["subregion"]        as? String
+        suggestion.type             = json["type"]             as? String
+        suggestion.category         = json["category"]         as? String
+        suggestion.readyToTrinkYear = json["readyToTrinkYear"] as? String
+        suggestion.bestBeforeYear   = json["bestBeforeYear"]   as? String
+        suggestion.remarks          = json["remarks"]          as? String
+        suggestion.price            = json["price"]            as? String
+
+        // Sources: prefer explicit JSON array; fall back to annotation-derived sources
+        if let rawSources = json["sources"] as? [[String: Any]] {
+            var jsonSources: [AISearchSource] = []
+            for s in rawSources {
+                guard let url = s["url"] as? String, !url.isEmpty else { continue }
+                let title = s["title"] as? String ?? url
+                if !jsonSources.contains(where: { $0.url == url }) {
+                    jsonSources.append(AISearchSource(title: title, url: url))
+                }
+            }
+            // Merge with any annotation sources that aren't already listed
+            var merged = jsonSources
+            for src in annotationSources where !merged.contains(where: { $0.url == src.url }) {
+                merged.append(src)
+            }
+            suggestion.sources = merged
+        } else {
+            suggestion.sources = annotationSources
+        }
 
         return suggestion
     }

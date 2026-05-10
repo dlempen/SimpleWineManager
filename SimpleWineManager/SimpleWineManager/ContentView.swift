@@ -498,7 +498,7 @@ struct ContentView: View {
             }
             if totalPrice > 0 {
                 Text("•")
-                Text("\(totalPrice) \(settings.currencySymbol)")
+                Text("\(NSDecimalNumber(decimal: totalPrice).stringValue) \(settings.currencySymbol)")
             }
         }
         .font(.caption)
