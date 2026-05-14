@@ -135,6 +135,14 @@ class AIService {
             throw AIServiceError.noUsefulFields
         }
 
+        // Extract ISO currency code (e.g. "CHF" from "CHF (Fr.)")
+        let targetCurrencyCode: String
+        if let spaceIdx = currency.firstIndex(of: " ") {
+            targetCurrencyCode = String(currency[currency.startIndex..<spaceIdx])
+        } else {
+            targetCurrencyCode = currency
+        }
+
         switch provider {
         case .openAI:
             let prompt = buildPrompt(
@@ -148,7 +156,10 @@ class AIService {
             let (responseText, sources) = try await callOpenAIChatAPI(
                 prompt: prompt, apiKey: apiKey, searchCountries: searchCountries
             )
-            return parseSuggestion(from: responseText, sources: sources)
+            var suggestion = parseSuggestion(from: responseText, sources: sources)
+            // Convert prices to the user's chosen currency using live exchange rates
+            await applyPriceConversion(to: &suggestion, targetCurrencyCode: targetCurrencyCode)
+            return suggestion
         }
     }
 
@@ -181,14 +192,6 @@ class AIService {
 
         let knownSection = knownLines.joined(separator: "\n")
 
-        // Extract just the currency code for the prompt (e.g. "EUR" from "EUR (€)")
-        let currencyCode: String
-        if let spaceIdx = currency.firstIndex(of: " ") {
-            currencyCode = String(currency[currency.startIndex..<spaceIdx])
-        } else {
-            currencyCode = currency
-        }
-
         // Build the geo-restriction instruction for the prompt
         let geoInstruction: String
         if searchCountries.isEmpty {
@@ -204,23 +207,8 @@ You are a wine expert assistant. Based on the information provided about a wine,
 You have access to real-time web search.
 \(geoInstruction)
 
-**CRITICAL — Currency conversion (READ THIS FIRST):**
-All prices in the final JSON MUST be expressed in \(currencyCode). Many wine websites list prices in other currencies (EUR, GBP, USD, etc.). You MUST convert every found price to \(currencyCode) before putting it in the JSON.
-
-Step-by-step process for every price you find:
-1. Note the price as shown on the website — e.g. "EUR 18.90".
-2. If the website currency IS already \(currencyCode), use the price directly and do NOT set "originalPrice".
-3. If the website currency is DIFFERENT from \(currencyCode):
-   a. Search the web for the CURRENT exchange rate (e.g. "EUR to \(currencyCode) exchange rate today").
-   b. Multiply the original amount by the exchange rate to get the \(currencyCode) amount.
-   c. Example: EUR 18.90 × 0.91 (EUR/CHF rate) = CHF 17.20. Use 17.20 as the price.
-   d. Set "originalPrice" to the raw value found on the website, e.g. "EUR 18.90".
-   e. Set "price" to the converted value, e.g. "\(currencyCode) 17.20".
-4. NEVER copy a EUR amount into CHF (or any other currency) without actually multiplying by the exchange rate.
-5. After converting all individual prices, calculate their average (all now in \(currencyCode)) and set the top-level "price" field to that average as a plain number.
-
 **IMPORTANT — Multi-source research:**
-- For PRICE: Search at least 3 different wine retailers or shops. Apply the currency conversion steps above to every price. Calculate the average of the CONVERTED prices and return it as "price". Also return every individual converted price in "priceDetails".
+- For PRICE: Search at least 3 different wine retailers or shops. Record every individual price you find EXACTLY as shown on the website (keep the original currency, e.g. "EUR 18.90" or "USD 22.00"). Do NOT convert currencies yourself — report prices verbatim. The app will handle currency conversion automatically.
 - For DRINKING WINDOW: Search at least 3 different wine critics, wine databases, or producer pages. Record every recommended window you find. Calculate the consensus and return "readyToTrinkYear" and "bestBeforeYear" as the average. Also return every individual window you found in "drinkingWindowDetails".
 - For SOURCES: List ALL websites you consulted for any field — not just price. Every search result used must appear in "sources".
 
@@ -248,7 +236,7 @@ The JSON must use exactly these keys (only include keys you can fill):
   "price": "...",
   "remarks": "Brief tasting notes or interesting facts about this wine.",
   "priceDetails": [
-    { "source": "Retailer name", "url": "https://...", "price": "\(currencyCode) 24.50", "originalPrice": "GBP 21.00" }
+    { "source": "Retailer name", "url": "https://...", "price": "EUR 24.50" }
   ],
   "drinkingWindowDetails": [
     { "source": "Critic or site name", "url": "https://...", "readyYear": "YYYY", "bestBeforeYear": "YYYY" }
@@ -263,11 +251,8 @@ Rules:
 - "alcohol" must be a number only, no % sign (e.g. "13.5") or omit.
 - "readyToTrinkYear" and "bestBeforeYear" must be 4-digit year strings or omit.
 - "category" must be one of: Red, White, Rosé, Sparkling, Dessert, Port.
-- "price" must be the AVERAGE of all found prices after converting each one to \(currencyCode) using the current exchange rate. Return as a plain number only (no symbol, no spaces). Example: "24.50". Omit if no prices found.
-- "priceDetails" must list EVERY individual price found. For each entry:
-  - "price" = the converted \(currencyCode) amount, formatted as "\(currencyCode) XX.XX". NEVER copy a foreign-currency number here without converting.
-  - "originalPrice" = the price as found on the website (e.g. "EUR 18.90"), ONLY when the source currency differs from \(currencyCode). Omit this key if the source already uses \(currencyCode).
-  Omit the entire "priceDetails" key if no prices found.
+- "price" must be the AVERAGE of the prices found across all sources, as a plain number (no currency symbol, no spaces). Example: "24.50". Use the currency actually shown on the websites (do not convert). Omit if no prices found.
+- "priceDetails" must list EVERY individual price found. For each entry, "price" must be the value exactly as shown on the website, formatted as "CCC XX.XX" (e.g. "EUR 18.90", "USD 22.00"). The app will convert to the user's currency automatically. Omit the entire "priceDetails" key if no prices found.
 - "drinkingWindowDetails" must list EVERY individual drinking window found. Include source name, URL, readyYear and bestBeforeYear as 4-digit strings. Omit if no windows found.
 - "sources" must list ALL web pages consulted for any field. Omit only if no web search was performed.
 - Only include fields that are MISSING from the known information above.
@@ -457,15 +442,14 @@ Rules:
             suggestion.price = priceNum.stringValue
         }
 
-        // priceDetails
+        // priceDetails — prices are in their original/source currency; conversion happens in applyPriceConversion()
         if let rawPrices = json["priceDetails"] as? [[String: Any]] {
             var points: [AIPriceDataPoint] = []
             for p in rawPrices {
                 guard let price = p["price"] as? String, !price.isEmpty else { continue }
-                let source        = p["source"]        as? String ?? ""
-                let url           = p["url"]           as? String ?? ""
-                let originalPrice = p["originalPrice"] as? String
-                points.append(AIPriceDataPoint(source: source, url: url, price: price, originalPrice: originalPrice))
+                let source = p["source"] as? String ?? ""
+                let url    = p["url"]    as? String ?? ""
+                points.append(AIPriceDataPoint(source: source, url: url, price: price, originalPrice: nil))
             }
             suggestion.priceDetails = points
         }
@@ -504,5 +488,99 @@ Rules:
         }
 
         return suggestion
+    }
+
+    // MARK: - Currency conversion
+
+    /// Parses a price string like "EUR 18.90" or "18.90" into (currencyCode, amount).
+    private func parsePriceString(_ raw: String) -> (currency: String, amount: Double)? {
+        let parts = raw.trimmingCharacters(in: .whitespaces).components(separatedBy: " ")
+        if parts.count >= 2,
+           parts[0].count == 3,
+           parts[0] == parts[0].uppercased(),
+           let amount = Double(parts[1...].joined(separator: "").replacingOccurrences(of: ",", with: ".")) {
+            return (parts[0].uppercased(), amount)
+        }
+        // Fallback: try to parse as a bare number (assume no currency code present)
+        if let amount = Double(raw.replacingOccurrences(of: ",", with: ".")) {
+            return (nil, amount).map { _ in return nil } ?? nil
+        }
+        return nil
+    }
+
+    /// Fetches the exchange rate from `from` currency to `to` currency using
+    /// the free Frankfurter API (https://www.frankfurter.app). No API key required.
+    /// Returns 1.0 if the currencies are the same or if the request fails.
+    private func fetchExchangeRate(from: String, to: String) async -> Double {
+        guard from != to else { return 1.0 }
+        let urlStr = "https://api.frankfurter.app/latest?from=\(from)&to=\(to)"
+        guard let url = URL(string: urlStr) else { return 1.0 }
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let rates = json["rates"] as? [String: Any],
+              let rate = rates[to] as? Double else { return 1.0 }
+        return rate
+    }
+
+    /// Converts all prices in the suggestion to `targetCurrencyCode` using live exchange rates.
+    /// Updates each AIPriceDataPoint and recalculates the average `suggestion.price`.
+    private func applyPriceConversion(to suggestion: inout AIWineSuggestion, targetCurrencyCode: String) async {
+        guard !suggestion.priceDetails.isEmpty else {
+            // No priceDetails — attempt a best-effort conversion of the bare price field
+            if let rawPrice = suggestion.price,
+               let amount = Double(rawPrice.replacingOccurrences(of: ",", with: ".")),
+               amount > 0 {
+                // Nothing to convert without knowing the source currency — leave as-is
+                _ = amount
+            }
+            return
+        }
+
+        // Cache exchange rates so we don't make duplicate calls
+        var rateCache: [String: Double] = [:]
+
+        var convertedPoints: [AIPriceDataPoint] = []
+        var convertedAmounts: [Double] = []
+
+        for point in suggestion.priceDetails {
+            guard let parsed = parsePriceString(point.price) else {
+                convertedPoints.append(point)
+                continue
+            }
+            let sourceCurrency = parsed.currency
+            let sourceAmount   = parsed.amount
+
+            if sourceCurrency == targetCurrencyCode {
+                // Already in the right currency
+                let formatted = String(format: "%@ %.2f", targetCurrencyCode, sourceAmount)
+                convertedPoints.append(AIPriceDataPoint(
+                    source: point.source, url: point.url,
+                    price: formatted, originalPrice: nil
+                ))
+                convertedAmounts.append(sourceAmount)
+            } else {
+                // Need conversion — fetch rate (cached)
+                if rateCache[sourceCurrency] == nil {
+                    rateCache[sourceCurrency] = await fetchExchangeRate(from: sourceCurrency, to: targetCurrencyCode)
+                }
+                let rate = rateCache[sourceCurrency] ?? 1.0
+                let converted = sourceAmount * rate
+                let convertedFormatted  = String(format: "%@ %.2f", targetCurrencyCode, converted)
+                let originalFormatted   = String(format: "%@ %.2f", sourceCurrency, sourceAmount)
+                convertedPoints.append(AIPriceDataPoint(
+                    source: point.source, url: point.url,
+                    price: convertedFormatted, originalPrice: originalFormatted
+                ))
+                convertedAmounts.append(converted)
+            }
+        }
+
+        suggestion.priceDetails = convertedPoints
+
+        // Recalculate average from the now-converted amounts
+        if !convertedAmounts.isEmpty {
+            let avg = convertedAmounts.reduce(0, +) / Double(convertedAmounts.count)
+            suggestion.price = String(format: "%.2f", avg)
+        }
     }
 }
