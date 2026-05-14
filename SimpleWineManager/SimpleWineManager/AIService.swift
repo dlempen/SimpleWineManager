@@ -577,7 +577,10 @@ Rules:
         // Recalculate average from the now-converted amounts
         if !convertedAmounts.isEmpty {
             let avg = convertedAmounts.reduce(0, +) / Double(convertedAmounts.count)
-            suggestion.price = String(format: "%.1f", avg)
+            // Round to 1 decimal place, then format with 2 decimal digits so
+            // prices display naturally as e.g. "65.30" rather than "65.3" or "65.27"
+            let rounded = (avg * 10).rounded() / 10
+            suggestion.price = String(format: "%.2f", rounded)
         }
     }
 }
