@@ -204,8 +204,23 @@ You are a wine expert assistant. Based on the information provided about a wine,
 You have access to real-time web search.
 \(geoInstruction)
 
+**CRITICAL — Currency conversion (READ THIS FIRST):**
+All prices in the final JSON MUST be expressed in \(currencyCode). Many wine websites list prices in other currencies (EUR, GBP, USD, etc.). You MUST convert every found price to \(currencyCode) before putting it in the JSON.
+
+Step-by-step process for every price you find:
+1. Note the price as shown on the website — e.g. "EUR 18.90".
+2. If the website currency IS already \(currencyCode), use the price directly and do NOT set "originalPrice".
+3. If the website currency is DIFFERENT from \(currencyCode):
+   a. Search the web for the CURRENT exchange rate (e.g. "EUR to \(currencyCode) exchange rate today").
+   b. Multiply the original amount by the exchange rate to get the \(currencyCode) amount.
+   c. Example: EUR 18.90 × 0.91 (EUR/CHF rate) = CHF 17.20. Use 17.20 as the price.
+   d. Set "originalPrice" to the raw value found on the website, e.g. "EUR 18.90".
+   e. Set "price" to the converted value, e.g. "\(currencyCode) 17.20".
+4. NEVER copy a EUR amount into CHF (or any other currency) without actually multiplying by the exchange rate.
+5. After converting all individual prices, calculate their average (all now in \(currencyCode)) and set the top-level "price" field to that average as a plain number.
+
 **IMPORTANT — Multi-source research:**
-- For PRICE: Search at least 3 different wine retailers or shops. Record every individual price you find. Calculate the average and return it as "price". Also return every individual price you found in "priceDetails".
+- For PRICE: Search at least 3 different wine retailers or shops. Apply the currency conversion steps above to every price. Calculate the average of the CONVERTED prices and return it as "price". Also return every individual converted price in "priceDetails".
 - For DRINKING WINDOW: Search at least 3 different wine critics, wine databases, or producer pages. Record every recommended window you find. Calculate the consensus and return "readyToTrinkYear" and "bestBeforeYear" as the average. Also return every individual window you found in "drinkingWindowDetails".
 - For SOURCES: List ALL websites you consulted for any field — not just price. Every search result used must appear in "sources".
 
@@ -248,11 +263,10 @@ Rules:
 - "alcohol" must be a number only, no % sign (e.g. "13.5") or omit.
 - "readyToTrinkYear" and "bestBeforeYear" must be 4-digit year strings or omit.
 - "category" must be one of: Red, White, Rosé, Sparkling, Dessert, Port.
-- "price" must be the AVERAGE retail price across all sources found, converted to \(currencyCode), as a plain number only (no currency symbol, no spaces). Example: "24.50". Omit if no prices found.
-- "priceDetails" must list EVERY individual price found before averaging. For each entry:
-  - "price" must be the price converted to \(currencyCode), formatted as "\(currencyCode) XX.XX".
-  - "originalPrice" must be included ONLY when the source listed the price in a DIFFERENT currency than \(currencyCode). Format it as "CCC XX.XX" (e.g. "GBP 21.00"). If the source already uses \(currencyCode), omit "originalPrice".
-  - To convert between currencies, search for the current exchange rate and apply it. Show realistic, up-to-date conversion results.
+- "price" must be the AVERAGE of all found prices after converting each one to \(currencyCode) using the current exchange rate. Return as a plain number only (no symbol, no spaces). Example: "24.50". Omit if no prices found.
+- "priceDetails" must list EVERY individual price found. For each entry:
+  - "price" = the converted \(currencyCode) amount, formatted as "\(currencyCode) XX.XX". NEVER copy a foreign-currency number here without converting.
+  - "originalPrice" = the price as found on the website (e.g. "EUR 18.90"), ONLY when the source currency differs from \(currencyCode). Omit this key if the source already uses \(currencyCode).
   Omit the entire "priceDetails" key if no prices found.
 - "drinkingWindowDetails" must list EVERY individual drinking window found. Include source name, URL, readyYear and bestBeforeYear as 4-digit strings. Omit if no windows found.
 - "sources" must list ALL web pages consulted for any field. Omit only if no web search was performed.
