@@ -24,6 +24,23 @@ struct AISearchSource: Identifiable {
     let url: String
 }
 
+/// A single price data point found by the AI from one source.
+struct AIPriceDataPoint: Identifiable {
+    let id = UUID()
+    let source: String   // retailer / site name
+    let url: String
+    let price: String    // formatted string including currency, e.g. "CHF 24.50"
+}
+
+/// A single drinking-window data point found by the AI from one source.
+struct AIDrinkingWindowDataPoint: Identifiable {
+    let id = UUID()
+    let source: String   // critic / site name
+    let url: String
+    let readyYear: String
+    let bestBeforeYear: String
+}
+
 // MARK: - AI Wine Suggestion
 
 struct AIWineSuggestion {
@@ -43,6 +60,10 @@ struct AIWineSuggestion {
     var price: String?
     /// Web search citations returned by the API
     var sources: [AISearchSource] = []
+    /// Individual price data points that were averaged to produce `price`
+    var priceDetails: [AIPriceDataPoint] = []
+    /// Individual drinking-window data points that were averaged to produce readyToTrinkYear/bestBeforeYear
+    var drinkingWindowDetails: [AIDrinkingWindowDataPoint] = []
 }
 
 // MARK: - AI Service Errors
@@ -179,8 +200,13 @@ class AIService {
         return """
 You are a wine expert assistant. Based on the information provided about a wine, fill in as many of the MISSING fields as possible.
 
-You have access to real-time web search. Use it to look up the current average retail price.
+You have access to real-time web search.
 \(geoInstruction)
+
+**IMPORTANT — Multi-source research:**
+- For PRICE: Search at least 3 different wine retailers or shops. Record every individual price you find. Calculate the average and return it as "price". Also return every individual price you found in "priceDetails".
+- For DRINKING WINDOW: Search at least 3 different wine critics, wine databases, or producer pages. Record every recommended window you find. Calculate the consensus and return "readyToTrinkYear" and "bestBeforeYear" as the average. Also return every individual window you found in "drinkingWindowDetails".
+- For SOURCES: List ALL websites you consulted for any field — not just price. Every search result used must appear in "sources".
 
 Known information:
 \(knownSection)
@@ -205,6 +231,12 @@ The JSON must use exactly these keys (only include keys you can fill):
   "bestBeforeYear": "YYYY",
   "price": "...",
   "remarks": "Brief tasting notes or interesting facts about this wine.",
+  "priceDetails": [
+    { "source": "Retailer name", "url": "https://...", "price": "\(currencyCode) 24.50" }
+  ],
+  "drinkingWindowDetails": [
+    { "source": "Critic or site name", "url": "https://...", "readyYear": "YYYY", "bestBeforeYear": "YYYY" }
+  ],
   "sources": [
     { "title": "Page title", "url": "https://..." }
   ]
@@ -215,8 +247,10 @@ Rules:
 - "alcohol" must be a number only, no % sign (e.g. "13.5") or omit.
 - "readyToTrinkYear" and "bestBeforeYear" must be 4-digit year strings or omit.
 - "category" must be one of: Red, White, Rosé, Sparkling, Dessert, Port.
-- "price" must be the average retail price in \(currencyCode), as a plain number only (no currency symbol, no spaces). Example: "24.50". If you cannot find a reliable price, omit this field.
-- "sources" must be an array of objects with "title" and "url" fields, listing the web pages you consulted. Include at least the page you used to look up the price. Omit "sources" only if you performed no web search.
+- "price" must be the AVERAGE retail price across all sources found, in \(currencyCode), as a plain number only (no currency symbol, no spaces). Example: "24.50". Omit if no prices found.
+- "priceDetails" must list EVERY individual price found before averaging. Include the retailer name, URL, and price formatted as "\(currencyCode) XX.XX". Omit if no prices found.
+- "drinkingWindowDetails" must list EVERY individual drinking window found. Include source name, URL, readyYear and bestBeforeYear as 4-digit strings. Omit if no windows found.
+- "sources" must list ALL web pages consulted for any field. Omit only if no web search was performed.
 - Only include fields that are MISSING from the known information above.
 """
     }
@@ -398,6 +432,31 @@ Rules:
         suggestion.bestBeforeYear   = json["bestBeforeYear"]   as? String
         suggestion.remarks          = json["remarks"]          as? String
         suggestion.price            = json["price"]            as? String
+
+        // priceDetails
+        if let rawPrices = json["priceDetails"] as? [[String: Any]] {
+            var points: [AIPriceDataPoint] = []
+            for p in rawPrices {
+                guard let price = p["price"] as? String, !price.isEmpty else { continue }
+                let source = p["source"] as? String ?? ""
+                let url    = p["url"]    as? String ?? ""
+                points.append(AIPriceDataPoint(source: source, url: url, price: price))
+            }
+            suggestion.priceDetails = points
+        }
+
+        // drinkingWindowDetails
+        if let rawWindows = json["drinkingWindowDetails"] as? [[String: Any]] {
+            var points: [AIDrinkingWindowDataPoint] = []
+            for w in rawWindows {
+                guard let readyYear = w["readyYear"] as? String, !readyYear.isEmpty else { continue }
+                let source         = w["source"]        as? String ?? ""
+                let url            = w["url"]           as? String ?? ""
+                let bestBefore     = w["bestBeforeYear"] as? String ?? ""
+                points.append(AIDrinkingWindowDataPoint(source: source, url: url, readyYear: readyYear, bestBeforeYear: bestBefore))
+            }
+            suggestion.drinkingWindowDetails = points
+        }
 
         // Sources: prefer explicit JSON array; fall back to annotation-derived sources
         if let rawSources = json["sources"] as? [[String: Any]] {

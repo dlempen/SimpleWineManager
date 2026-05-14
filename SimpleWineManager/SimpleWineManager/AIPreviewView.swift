@@ -206,14 +206,46 @@ struct AIPreviewView: View {
                 }
             }
 
+            // Price breakdown
+            if !suggestion.priceDetails.isEmpty {
+                Section(
+                    header: HStack(spacing: 6) {
+                        Image(systemName: "tag.fill")
+                        Text("Price sources")
+                    },
+                    footer: Text("The suggested price is the average of all prices found below.")
+                        .font(.caption)
+                ) {
+                    ForEach(suggestion.priceDetails) { point in
+                        priceDetailRow(point)
+                    }
+                }
+            }
+
+            // Drinking window breakdown
+            if !suggestion.drinkingWindowDetails.isEmpty {
+                Section(
+                    header: HStack(spacing: 6) {
+                        Image(systemName: "clock.fill")
+                        Text("Drinking window sources")
+                    },
+                    footer: Text("The suggested drinking window is the consensus across the sources below.")
+                        .font(.caption)
+                ) {
+                    ForEach(suggestion.drinkingWindowDetails) { point in
+                        drinkingWindowDetailRow(point)
+                    }
+                }
+            }
+
             // Web search sources
             if !suggestion.sources.isEmpty {
                 Section(
                     header: HStack(spacing: 6) {
                         Image(systemName: "magnifyingglass")
-                        Text("Web sources")
+                        Text("All consulted sources")
                     },
-                    footer: Text("These pages were consulted by the AI to look up pricing and wine details.")
+                    footer: Text("Every web page the AI consulted to fill in the fields above.")
                         .font(.caption)
                 ) {
                     ForEach(suggestion.sources) { source in
@@ -253,6 +285,58 @@ struct AIPreviewView: View {
         }
         .padding(.vertical, 3)
         .contentShape(Rectangle())
+    }
+
+    private func priceDetailRow(_ point: AIPriceDataPoint) -> some View {
+        let dest = URL(string: point.url) ?? URL(string: "https://example.com")!
+        return Link(destination: dest) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "storefront")
+                    .foregroundColor(.green)
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(point.source.isEmpty ? point.url : point.source)
+                        .font(.footnote)
+                        .foregroundColor(.blue)
+                        .lineLimit(1)
+                    Text(point.price)
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "arrow.up.right")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    private func drinkingWindowDetailRow(_ point: AIDrinkingWindowDataPoint) -> some View {
+        let dest = URL(string: point.url) ?? URL(string: "https://example.com")!
+        return Link(destination: dest) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "wineglass")
+                    .foregroundColor(.purple)
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(point.source.isEmpty ? point.url : point.source)
+                        .font(.footnote)
+                        .foregroundColor(.blue)
+                        .lineLimit(1)
+                    Text(point.bestBeforeYear.isEmpty
+                         ? "From \(point.readyYear)"
+                         : "\(point.readyYear) – \(point.bestBeforeYear)")
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "arrow.up.right")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 2)
+        }
     }
 
     private func sourceRow(_ source: AISearchSource) -> some View {
