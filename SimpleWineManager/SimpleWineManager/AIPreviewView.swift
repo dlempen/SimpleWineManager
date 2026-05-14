@@ -213,7 +213,7 @@ struct AIPreviewView: View {
                         Image(systemName: "tag.fill")
                         Text("Price sources")
                     },
-                    footer: Text("The suggested price is the average of all prices found below.")
+                    footer: Text("The suggested price is the average of all prices found below, converted to your chosen currency where needed.")
                         .font(.caption)
                 ) {
                     ForEach(suggestion.priceDetails) { point in
@@ -299,9 +299,19 @@ struct AIPreviewView: View {
                         .font(.footnote)
                         .foregroundColor(.blue)
                         .lineLimit(1)
-                    Text(point.price)
-                        .font(.caption)
-                        .foregroundColor(.primary)
+                    HStack(spacing: 6) {
+                        Text(point.price)
+                            .font(.caption)
+                            .foregroundColor(.primary)
+                        if let original = point.originalPrice, !original.isEmpty {
+                            Text("(\(original))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                        }
+                    }
                 }
                 Spacer(minLength: 4)
                 Image(systemName: "arrow.up.right")

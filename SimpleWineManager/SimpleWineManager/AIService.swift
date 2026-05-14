@@ -27,9 +27,10 @@ struct AISearchSource: Identifiable {
 /// A single price data point found by the AI from one source.
 struct AIPriceDataPoint: Identifiable {
     let id = UUID()
-    let source: String   // retailer / site name
+    let source: String        // retailer / site name
     let url: String
-    let price: String    // formatted string including currency, e.g. "CHF 24.50"
+    let price: String         // price converted to target currency, e.g. "EUR 24.50"
+    let originalPrice: String? // price as found on the website if it was in a different currency, e.g. "GBP 21.00"
 }
 
 /// A single drinking-window data point found by the AI from one source.
@@ -232,7 +233,7 @@ The JSON must use exactly these keys (only include keys you can fill):
   "price": "...",
   "remarks": "Brief tasting notes or interesting facts about this wine.",
   "priceDetails": [
-    { "source": "Retailer name", "url": "https://...", "price": "\(currencyCode) 24.50" }
+    { "source": "Retailer name", "url": "https://...", "price": "\(currencyCode) 24.50", "originalPrice": "GBP 21.00" }
   ],
   "drinkingWindowDetails": [
     { "source": "Critic or site name", "url": "https://...", "readyYear": "YYYY", "bestBeforeYear": "YYYY" }
@@ -247,8 +248,12 @@ Rules:
 - "alcohol" must be a number only, no % sign (e.g. "13.5") or omit.
 - "readyToTrinkYear" and "bestBeforeYear" must be 4-digit year strings or omit.
 - "category" must be one of: Red, White, Rosé, Sparkling, Dessert, Port.
-- "price" must be the AVERAGE retail price across all sources found, in \(currencyCode), as a plain number only (no currency symbol, no spaces). Example: "24.50". Omit if no prices found.
-- "priceDetails" must list EVERY individual price found before averaging. Include the retailer name, URL, and price formatted as "\(currencyCode) XX.XX". Omit if no prices found.
+- "price" must be the AVERAGE retail price across all sources found, converted to \(currencyCode), as a plain number only (no currency symbol, no spaces). Example: "24.50". Omit if no prices found.
+- "priceDetails" must list EVERY individual price found before averaging. For each entry:
+  - "price" must be the price converted to \(currencyCode), formatted as "\(currencyCode) XX.XX".
+  - "originalPrice" must be included ONLY when the source listed the price in a DIFFERENT currency than \(currencyCode). Format it as "CCC XX.XX" (e.g. "GBP 21.00"). If the source already uses \(currencyCode), omit "originalPrice".
+  - To convert between currencies, search for the current exchange rate and apply it. Show realistic, up-to-date conversion results.
+  Omit the entire "priceDetails" key if no prices found.
 - "drinkingWindowDetails" must list EVERY individual drinking window found. Include source name, URL, readyYear and bestBeforeYear as 4-digit strings. Omit if no windows found.
 - "sources" must list ALL web pages consulted for any field. Omit only if no web search was performed.
 - Only include fields that are MISSING from the known information above.
@@ -438,9 +443,10 @@ Rules:
             var points: [AIPriceDataPoint] = []
             for p in rawPrices {
                 guard let price = p["price"] as? String, !price.isEmpty else { continue }
-                let source = p["source"] as? String ?? ""
-                let url    = p["url"]    as? String ?? ""
-                points.append(AIPriceDataPoint(source: source, url: url, price: price))
+                let source        = p["source"]        as? String ?? ""
+                let url           = p["url"]           as? String ?? ""
+                let originalPrice = p["originalPrice"] as? String
+                points.append(AIPriceDataPoint(source: source, url: url, price: price, originalPrice: originalPrice))
             }
             suggestion.priceDetails = points
         }
