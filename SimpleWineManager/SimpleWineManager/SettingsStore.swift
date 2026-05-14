@@ -92,6 +92,51 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    /// Countries whose web sources the AI should prefer when searching for wine info.
+    /// Empty array = no geographic restriction (global search).
+    @Published var aiSearchCountries: [String] {
+        didSet {
+            if let encoded = try? JSONEncoder().encode(aiSearchCountries) {
+                UserDefaults.standard.set(encoded, forKey: "aiSearchCountries")
+            }
+        }
+    }
+
+    // All countries available for AI search geo-filtering, with their ISO-3166-1 alpha-2
+    // country codes used by the OpenAI web_search_preview user_location parameter.
+    static let aiSearchableCountries: [(name: String, code: String)] = [
+        ("Austria",        "AT"),
+        ("Belgium",        "BE"),
+        ("Croatia",        "HR"),
+        ("Denmark",        "DK"),
+        ("Finland",        "FI"),
+        ("France",         "FR"),
+        ("Germany",        "DE"),
+        ("Greece",         "GR"),
+        ("Hungary",        "HU"),
+        ("Ireland",        "IE"),
+        ("Italy",          "IT"),
+        ("Luxembourg",     "LU"),
+        ("Netherlands",    "NL"),
+        ("Norway",         "NO"),
+        ("Poland",         "PL"),
+        ("Portugal",       "PT"),
+        ("Romania",        "RO"),
+        ("Serbia",         "RS"),
+        ("Slovenia",       "SI"),
+        ("South Africa",   "ZA"),
+        ("Spain",          "ES"),
+        ("Sweden",         "SE"),
+        ("Switzerland",    "CH"),
+        ("United Kingdom", "GB"),
+        ("United States",  "US"),
+        ("Australia",      "AU"),
+        ("New Zealand",    "NZ"),
+        ("Canada",         "CA"),
+        ("Argentina",      "AR"),
+        ("Chile",          "CL"),
+    ]
+
     @Published var imageQuality: ImageQuality {
         didSet {
             UserDefaults.standard.set(imageQuality.rawValue, forKey: "imageQuality")
@@ -149,6 +194,14 @@ class SettingsStore: ObservableObject {
             self.aiApiKey = legacyKey
         } else {
             self.aiApiKey = ""
+        }
+
+        // AI search countries (geo-filter for web search)
+        if let data = UserDefaults.standard.data(forKey: "aiSearchCountries"),
+           let decoded = try? JSONDecoder().decode([String].self, from: data) {
+            self.aiSearchCountries = decoded
+        } else {
+            self.aiSearchCountries = [] // empty = global (no restriction)
         }
 
         // Load image quality setting

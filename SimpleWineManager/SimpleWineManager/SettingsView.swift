@@ -185,6 +185,26 @@ struct SettingsView: View {
                             .disableAutocorrection(true)
                     }
                 }
+
+                Section(
+                    header: Text("AI Search Region"),
+                    footer: Text(settings.aiSearchCountries.isEmpty
+                        ? "No restriction — the AI searches worldwide. Select one or more countries to bias results towards local wine shops and pricing."
+                        : "The AI will prefer sources from: \(settings.aiSearchCountries.joined(separator: ", ")).")
+                ) {
+                    NavigationLink(destination: AISearchCountryPickerView(settings: settings)) {
+                        HStack {
+                            if settings.aiSearchCountries.isEmpty {
+                                Text("All countries (global)")
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text(settings.aiSearchCountries.prefix(3).joined(separator: ", ") +
+                                     (settings.aiSearchCountries.count > 3 ? " +\(settings.aiSearchCountries.count - 3) more" : ""))
+                                    .foregroundColor(.primary)
+                            }
+                        }
+                    }
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -447,5 +467,66 @@ struct SortOrderEditView: View {
                 settings.selectedSortOrderId = newOrder.id
             }
         }
+    }
+}
+
+// MARK: - AI Search Country Picker
+
+struct AISearchCountryPickerView: View {
+    @ObservedObject var settings: SettingsStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Form {
+            Section(footer: Text("Select the countries whose wine shops and retailers the AI should prefer when looking up prices and wine details. Leave all deselected for a global search.")) {
+                Button {
+                    settings.aiSearchCountries = []
+                } label: {
+                    HStack {
+                        Text("All countries (global)")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if settings.aiSearchCountries.isEmpty {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+
+            Section(header: Text("Select countries")) {
+                ForEach(SettingsStore.aiSearchableCountries, id: \.code) { country in
+                    Button {
+                        if settings.aiSearchCountries.contains(country.name) {
+                            settings.aiSearchCountries.removeAll { $0 == country.name }
+                        } else {
+                            settings.aiSearchCountries.append(country.name)
+                            settings.aiSearchCountries.sort()
+                        }
+                    } label: {
+                        HStack {
+                            Text(flag(for: country.code) + "  " + country.name)
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if settings.aiSearchCountries.contains(country.name) {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .navigationTitle("AI Search Region")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// Converts an ISO 3166-1 alpha-2 country code to its emoji flag.
+    private func flag(for code: String) -> String {
+        code.uppercased().unicodeScalars.compactMap {
+            Unicode.Scalar(127397 + $0.value)
+        }.map(String.init).joined()
     }
 }

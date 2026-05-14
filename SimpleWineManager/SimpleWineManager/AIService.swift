@@ -100,7 +100,8 @@ class AIService {
         remarks: String,
         currency: String,
         apiKey: String,
-        provider: AIProvider
+        provider: AIProvider,
+        searchCountries: [String] = []
     ) async throws -> AIWineSuggestion {
 
         guard !apiKey.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -114,17 +115,17 @@ class AIService {
 
         switch provider {
         case .openAI:
-            // Uses the Responses API with gpt-4.1 + web_search_preview tool.
-            // See callOpenAIChatAPI for full implementation notes.
             let prompt = buildPrompt(
                 name: name, producer: producer, vintage: vintage,
                 alcohol: alcohol, grapes: grapes, country: country,
                 region: region, subregion: subregion, type: type,
                 category: category, readyToTrinkYear: readyToTrinkYear,
                 bestBeforeYear: bestBeforeYear, remarks: remarks,
-                currency: currency
+                currency: currency, searchCountries: searchCountries
             )
-            let (responseText, sources) = try await callOpenAIChatAPI(prompt: prompt, apiKey: apiKey)
+            let (responseText, sources) = try await callOpenAIChatAPI(
+                prompt: prompt, apiKey: apiKey, searchCountries: searchCountries
+            )
             return parseSuggestion(from: responseText, sources: sources)
         }
     }
@@ -137,7 +138,8 @@ class AIService {
         region: String, subregion: String, type: String,
         category: String, readyToTrinkYear: String,
         bestBeforeYear: String, remarks: String,
-        currency: String
+        currency: String,
+        searchCountries: [String]
     ) -> String {
 
         var knownLines: [String] = []
@@ -165,10 +167,20 @@ class AIService {
             currencyCode = currency
         }
 
+        // Build the geo-restriction instruction for the prompt
+        let geoInstruction: String
+        if searchCountries.isEmpty {
+            geoInstruction = "You may search globally for wine information and pricing."
+        } else {
+            let countryList = searchCountries.joined(separator: ", ")
+            geoInstruction = "When searching the web, ONLY use sources from the following countries: \(countryList). Prefer wine retailers, wine shops, and wine databases from these countries. The price should reflect what this wine costs in those markets."
+        }
+
         return """
 You are a wine expert assistant. Based on the information provided about a wine, fill in as many of the MISSING fields as possible.
 
 You have access to real-time web search. Use it to look up the current average retail price.
+\(geoInstruction)
 
 Known information:
 \(knownSection)
@@ -209,9 +221,28 @@ Rules:
 """
     }
 
+    /// Builds the web_search_preview tool dict, optionally including a user_location
+    /// derived from the first selected search country's ISO-3166-1 alpha-2 code.
+    private func buildWebSearchTool(searchCountries: [String]) -> [String: Any] {
+        var tool: [String: Any] = [
+            "type": "web_search_preview",
+            "search_context_size": "medium"
+        ]
+        // Map country name → ISO code using the same list as SettingsStore
+        if let firstCountry = searchCountries.first,
+           let match = SettingsStore.aiSearchableCountries.first(where: { $0.name == firstCountry }) {
+            tool["user_location"] = [
+                "type": "approximate",
+                "country": match.code
+            ]
+        }
+        return tool
+    }
+
     private func callOpenAIChatAPI(
         prompt: String,
-        apiKey: String
+        apiKey: String,
+        searchCountries: [String]
     ) async throws -> (content: String, sources: [AISearchSource]) {
 
         // ── Endpoint ────────────────────────────────────────────────────────
@@ -270,8 +301,9 @@ Rules:
             ],
             // web_search_preview adds live web search to the tools array.
             // search_context_size controls how much context window is reserved for results.
+            // user_location biases search results geographically (uses the first selected country's ISO code).
             "tools": [
-                ["type": "web_search_preview", "search_context_size": "medium"]
+                buildWebSearchTool(searchCountries: searchCountries)
             ]
         ]
 
