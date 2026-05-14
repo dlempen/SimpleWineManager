@@ -577,7 +577,7 @@ Rules:
         // Recalculate average from the now-converted amounts
         if !convertedAmounts.isEmpty {
             let avg = convertedAmounts.reduce(0, +) / Double(convertedAmounts.count)
-            suggestion.price = String(format: "%.2f", avg)
+            suggestion.price = String(format: "%.1f", avg)
         }
     }
 }
