@@ -450,7 +450,12 @@ Rules:
         suggestion.readyToTrinkYear = json["readyToTrinkYear"] as? String
         suggestion.bestBeforeYear   = json["bestBeforeYear"]   as? String
         suggestion.remarks          = json["remarks"]          as? String
-        suggestion.price            = json["price"]            as? String
+        // "price" may be returned as a JSON string OR a JSON number — handle both
+        if let priceStr = json["price"] as? String {
+            suggestion.price = priceStr
+        } else if let priceNum = json["price"] as? NSNumber {
+            suggestion.price = priceNum.stringValue
+        }
 
         // priceDetails
         if let rawPrices = json["priceDetails"] as? [[String: Any]] {
