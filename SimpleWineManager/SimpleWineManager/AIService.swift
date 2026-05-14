@@ -501,10 +501,7 @@ Rules:
            let amount = Double(parts[1...].joined(separator: "").replacingOccurrences(of: ",", with: ".")) {
             return (parts[0].uppercased(), amount)
         }
-        // Fallback: try to parse as a bare number (assume no currency code present)
-        if let amount = Double(raw.replacingOccurrences(of: ",", with: ".")) {
-            return (nil, amount).map { _ in return nil } ?? nil
-        }
+        // Fallback: bare number without a currency code — cannot convert, return nil
         return nil
     }
 
