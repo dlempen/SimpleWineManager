@@ -184,6 +184,17 @@ struct SettingsView: View {
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
                     }
+
+                    NavigationLink(destination: AIModelPickerView(settings: settings)) {
+                        HStack {
+                            Text("Model")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(SettingsStore.availableAIModels.first(where: { $0.id == settings.aiModel })?.name ?? settings.aiModel)
+                                .foregroundColor(.primary)
+                                .lineLimit(1)
+                        }
+                    }
                 }
 
                 Section(
@@ -528,5 +539,48 @@ struct AISearchCountryPickerView: View {
         code.uppercased().unicodeScalars.compactMap {
             Unicode.Scalar(127397 + $0.value)
         }.map(String.init).joined()
+    }
+}
+
+// MARK: - AI Model Picker
+
+struct AIModelPickerView: View {
+    @ObservedObject var settings: SettingsStore
+
+    var body: some View {
+        Form {
+            Section(
+                header: Text("OpenAI Model"),
+                footer: Text("GPT-5.5 is recommended for AI Fill — it uses agentic web search, actively verifying sources and producer identity across multiple steps. Faster/cheaper models trade accuracy for speed.")
+            ) {
+                ForEach(SettingsStore.availableAIModels, id: \.id) { model in
+                    Button {
+                        settings.aiModel = model.id
+                    } label: {
+                        HStack(alignment: .top, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(model.name)
+                                    .foregroundColor(.primary)
+                                    .fontWeight(settings.aiModel == model.id ? .semibold : .regular)
+                                Text(model.description)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer()
+                            if settings.aiModel == model.id {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                                    .padding(.top, 2)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .navigationTitle("AI Model")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

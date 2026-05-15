@@ -92,6 +92,26 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    /// The OpenAI model used for AI Fill requests.
+    @Published var aiModel: String {
+        didSet {
+            UserDefaults.standard.set(aiModel, forKey: "aiModel")
+        }
+    }
+
+    /// Models available for selection in Settings.
+    /// Each entry is (id, displayName, description).
+    static let availableAIModels: [(id: String, name: String, description: String)] = [
+        ("gpt-5.5",      "GPT-5.5 ✦ Recommended", "Best model for agentic web search. Performs multi-step searches, reasons about sources, and verifies producer identity most accurately."),
+        ("gpt-5.4",      "GPT-5.4",      "Latest stable GPT-5 series. Very capable with web search."),
+        ("gpt-5.4-mini", "GPT-5.4 mini", "Faster, cheaper GPT-5.4. Good balance of speed and quality."),
+        ("gpt-5.2",      "GPT-5.2",      "Stable GPT-5.2 release."),
+        ("gpt-5",        "GPT-5",        "Base GPT-5 with solid web search support."),
+        ("gpt-4.1",      "GPT-4.1",      "Latest GPT-4 series. Reliable fallback."),
+        ("o3",           "o3",           "Reasoning model. Extremely thorough but slower."),
+        ("o4-mini",      "o4-mini",      "Fast reasoning model."),
+    ]
+
     /// Countries whose web sources the AI should prefer when searching for wine info.
     /// Empty array = no geographic restriction (global search).
     @Published var aiSearchCountries: [String] {
@@ -184,6 +204,9 @@ class SettingsStore: ObservableObject {
         } else {
             self.aiProvider = .openAI
         }
+
+        self.aiModel = UserDefaults.standard.string(forKey: "aiModel") ?? "gpt-5.5"
+
         // Read API key from Keychain; fall back to any legacy UserDefaults value and migrate it.
         if let keychainKey = KeychainHelper.read(forKey: "aiApiKey") {
             self.aiApiKey = keychainKey

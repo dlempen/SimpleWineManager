@@ -5,7 +5,8 @@ import Foundation
 enum AIProvider: String, CaseIterable, Codable {
     case openAI = "OpenAI"
 
-    /// Hint text displayed below the API key field in Settings.
+    /// Hint text        model: String = "gpt-5.5",
+        searchCountries: [String] = []isplayed below the API key field in Settings.
     var apiKeyHint: String {
         return "Get your free API key at platform.openai.com → API keys"
     }
@@ -135,6 +136,7 @@ class AIService {
         currency: String,
         apiKey: String,
         provider: AIProvider,
+        model: String = "gpt-5.4",
         searchCountries: [String] = []
     ) async throws -> AIWineSuggestion {
 
@@ -166,7 +168,7 @@ class AIService {
                 currency: currency, searchCountries: searchCountries
             )
             let (responseText, sources) = try await callOpenAIChatAPI(
-                prompt: prompt, apiKey: apiKey, searchCountries: searchCountries
+                prompt: prompt, apiKey: apiKey, model: model, searchCountries: searchCountries
             )
             var suggestion = parseSuggestion(from: responseText, sources: sources)
             // Convert prices to the user's chosen currency using live exchange rates
@@ -296,11 +298,12 @@ Rules:
 """
     }
 
-    /// Builds the web_search_preview tool dict, optionally including a user_location
-    /// derived from the first selected search country's ISO-3166-1 alpha-2 code.
+    /// Builds the web_search tool dict (Responses API).
+    /// NOTE: `web_search_preview` was deprecated on 2025-10-01 and shuts down 2026-07-23.
+    ///       The replacement is `web_search` which also supports `filters` and `external_web_access`.
     private func buildWebSearchTool(searchCountries: [String]) -> [String: Any] {
         var tool: [String: Any] = [
-            "type": "web_search_preview",
+            "type": "web_search",
             "search_context_size": "high"
         ]
         // Map country name → ISO code using the same list as SettingsStore
@@ -317,26 +320,22 @@ Rules:
     private func callOpenAIChatAPI(
         prompt: String,
         apiKey: String,
+        model: String,
         searchCountries: [String]
     ) async throws -> (content: String, sources: [AISearchSource]) {
 
         // ── Endpoint ────────────────────────────────────────────────────────
-        // We use the Responses API (POST /v1/responses) because it is the only
-        // OpenAI endpoint that accepts web search as an entry in the `tools` array.
-        //
-        // The Chat Completions API (/v1/chat/completions) uses a top-level
-        // `web_search_options` field — NOT a tools[] entry — and only works with
-        // the dedicated "search-preview" model family.
+        // We use the Responses API (POST /v1/responses). This is the only endpoint
+        // that accepts `web_search` as a tool and supports agentic multi-step search.
         //
         // ── Model ───────────────────────────────────────────────────────────
-        // gpt-4.1 is the latest generally-available model in the GPT-4 series
-        // (released April 2025) and supports the web_search_preview tool.
-        // NOTE: The user requested "gpt-5.5" which does not exist.
-        //       Update the model name here when a newer model becomes available.
+        // Default: gpt-5.5 — recommended by OpenAI for web search + agentic search.
+        // Source: https://developers.openai.com/api/docs/guides/tools-web-search
+        // The model is passed in as a parameter so it can be changed in Settings.
         //
         // ── Tool ────────────────────────────────────────────────────────────
-        // Source: openai/openai-node — responses.ts WebSearchPreviewTool
-        //   { type: "web_search_preview", search_context_size: "low"|"medium"|"high" }
+        // `web_search` (replaces deprecated `web_search_preview` — shut down 2026-07-23)
+        // Supports: search_context_size, filters, external_web_access, user_location
         //
         // ── Response structure ───────────────────────────────────────────────
         // {
@@ -369,7 +368,7 @@ Rules:
         request.timeoutInterval = 60
 
         let body: [String: Any] = [
-            "model": "gpt-4.1",
+            "model": model,
             "input": [
                 ["role": "system", "content": """
 You are a precise wine research assistant. You respond ONLY with valid JSON and nothing else.

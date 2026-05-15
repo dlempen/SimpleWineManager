@@ -362,12 +362,12 @@ struct WineDetailView: View {
                     keyboardType: .default
                 )
                 
-                VStack(alignment: .leading, spacing: 4) {
+                HStack {
                     Text("Rating")
                         .foregroundColor(.secondary)
-                    TextField("Wine Rating", text: $editWineRating, axis: .vertical)
+                        .frame(width: 100, alignment: .leading)
+                    TextField("Wine Rating", text: $editWineRating)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .lineLimit(2...8)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -1017,6 +1017,7 @@ struct WineDetailView: View {
                     currency: settings.selectedCurrency,
                     apiKey: settings.aiApiKey,
                     provider: settings.aiProvider,
+                    model: settings.aiModel,
                     searchCountries: settings.aiSearchCountries
                 )
                 await MainActor.run {
