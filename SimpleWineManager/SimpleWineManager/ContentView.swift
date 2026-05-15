@@ -620,10 +620,7 @@ struct ContentView: View {
                 viewContext.refresh(wine, mergeChanges: true)
                 wine.objectWillChange.send()
                 viewModel.refreshData()
-                
-                // Note: History service would need to be initialized here if needed
-                // For now, we're keeping it simple without history logging
-                
+                historyService.logWineConsumed(wine: wine, quantityConsumed: 1)
             } catch {
                 print("Error saving context: \(error)")
                 wine.quantity = oldQuantity
@@ -633,6 +630,7 @@ struct ContentView: View {
 
     private func deleteWine(_ wine: Wine) {
         withAnimation {
+            historyService.logWineDeleted(wine: wine)
             viewContext.delete(wine)
             try? viewContext.save()
             viewModel.refreshData()
