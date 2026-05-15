@@ -362,12 +362,12 @@ struct WineDetailView: View {
                     keyboardType: .default
                 )
                 
-                HStack {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Rating")
                         .foregroundColor(.secondary)
-                        .frame(width: 100, alignment: .leading)
-                    TextField("Wine Rating", text: $editWineRating)
+                    TextField("Wine Rating", text: $editWineRating, axis: .vertical)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .lineLimit(2...8)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -665,7 +665,14 @@ struct WineDetailView: View {
                     DetailRow(label: "Storage", value: storageLocation)
                 }
                 if let wineRating = wine.wineRating, !wineRating.isEmpty {
-                    DetailRow(label: "Rating", value: wineRating)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Rating")
+                            .foregroundColor(.secondary)
+                        ForEach(wineRating.components(separatedBy: "\n").filter { !$0.isEmpty }, id: \.self) { line in
+                            Text(line)
+                                .bold()
+                        }
+                    }
                 }
                 if let remarks = wine.remarks, !remarks.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {

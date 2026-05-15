@@ -281,11 +281,12 @@ struct AIPreviewView: View {
 
     private func fieldRow(_ field: CandidateField) -> some View {
         let isOn = checked.contains(field.id)
-        return HStack(alignment: .center, spacing: 12) {
+        return HStack(alignment: .top, spacing: 12) {
             // Icon + label/value on the left
             Image(systemName: field.icon)
                 .foregroundColor(.purple.opacity(0.7))
                 .frame(width: 18)
+                .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(field.label)
@@ -295,6 +296,7 @@ struct AIPreviewView: View {
                     .font(.body)
                     .foregroundColor(isOn ? .primary : Color(.systemGray3))
                     .strikethrough(!isOn, color: Color(.systemGray3))
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer()
@@ -304,6 +306,7 @@ struct AIPreviewView: View {
                 .foregroundColor(isOn ? .purple : Color(.systemGray3))
                 .font(.title3)
                 .animation(.easeInOut(duration: 0.15), value: isOn)
+                .padding(.top, 2)
         }
         .padding(.vertical, 3)
         .contentShape(Rectangle())

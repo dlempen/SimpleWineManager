@@ -215,12 +215,12 @@ struct AddWineView: View {
                     keyboardType: .default
                 )
                 
-                HStack {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Rating")
                         .foregroundColor(.secondary)
-                        .frame(width: 100, alignment: .leading)
-                    TextField("Wine Rating", text: $wineRating)
+                    TextField("Wine Rating", text: $wineRating, axis: .vertical)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .lineLimit(2...8)
                 }
                 
                 VStack(alignment: .leading) {
