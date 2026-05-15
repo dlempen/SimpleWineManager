@@ -67,8 +67,7 @@ struct AIWineSuggestion {
     var remarks: String?
     /// Average retail price in the user's chosen currency (numeric string, no symbol)
     var price: String?
-    /// Multi-line critic rating summary, one entry per line: "Full Name, score\nFull Name, score"
-    /// e.g. "Robert Parker, 95/100\nWine Enthusiast, 92/100"
+    /// Formatted summary of critic ratings, e.g. "RP 94, JS 92, WE 91"
     var rating: String?
     /// Web search citations returned by the API
     var sources: [AISearchSource] = []
@@ -220,6 +219,13 @@ You are a wine expert assistant. Based on the information provided about a wine,
 You have access to real-time web search.
 \(geoInstruction)
 
+**⚠️ CRITICAL — Producer identity verification (read this first):**
+The wine information you must research is identified by BOTH its name AND its producer. Many wine names (e.g. "Barolo", "Reserva", "Chablis", "Gran Reserva") are shared by dozens of different producers. You MUST ensure that every piece of information you return — price, ratings, drinking window, tasting notes, grapes, alcohol, region, etc. — comes from a source that explicitly refers to the wine made by the EXACT producer stated in the "Known information" below.
+- If the producer is known: discard any source that does not name that exact producer. Do NOT use data from a different producer's wine, even if the wine name matches.
+- If the producer is not known: you may use general information, but state this clearly in the "remarks" field.
+- When in doubt about whether a source refers to the right producer, skip that source entirely.
+- Never mix data from different producers.
+
 **IMPORTANT — Multi-source research:**
 - For PRICE: Search at least 3 different wine retailers or shops. Record every individual price you find EXACTLY as shown on the website (keep the original currency, e.g. "EUR 18.90" or "USD 22.00"). Do NOT convert currencies yourself — report prices verbatim. The app will handle currency conversion automatically.
 - For DRINKING WINDOW: Search at least 3 different wine critics, wine databases, or producer pages. Record every recommended window you find. Calculate the consensus and return "readyToTrinkYear" and "bestBeforeYear" as the average. Also return every individual window you found in "drinkingWindowDetails".
@@ -276,6 +282,7 @@ Rules:
 - "ratingDetails" must list EVERY individual critic/press score found. For each entry: "critic" is the full name of the critic or publication, "score" is the score exactly as published (e.g. "94/100", "94 points", "4 stars", "3 Bicchieri"), "url" is the source page. Omit if no scores found.
 - "sources" must list ALL web pages consulted for any field. Omit only if no web search was performed.
 - Only include fields that are MISSING from the known information above.
+- **PRODUCER VERIFICATION**: Every source listed in "priceDetails", "drinkingWindowDetails", "ratingDetails", and "sources" must explicitly refer to the wine produced by the producer stated in the known information. If you cannot confirm the producer from a source, do not use it. This is mandatory.
 """
     }
 
