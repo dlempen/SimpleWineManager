@@ -187,6 +187,13 @@ class AIService {
         searchCountries: [String]
     ) -> String {
 
+        // Build a compact wine identity string used as a search anchor
+        var identityParts: [String] = []
+        if !producer.isEmpty { identityParts.append(producer) }
+        if !name.isEmpty     { identityParts.append(name) }
+        if !vintage.isEmpty  { identityParts.append(vintage) }
+        let wineIdentity = identityParts.joined(separator: " ")
+
         var knownLines: [String] = []
         if !name.isEmpty      { knownLines.append("Name: \(name)") }
         if !producer.isEmpty  { knownLines.append("Producer: \(producer)") }
@@ -214,17 +221,19 @@ class AIService {
         }
 
         return """
-You are a wine expert assistant. Based on the information provided about a wine, fill in as many of the MISSING fields as possible.
+You are a wine expert assistant. Research and fill in the missing fields for the following SPECIFIC wine.
+
+**THE WINE YOU MUST RESEARCH:** \(wineIdentity.isEmpty ? "(see Known information below)" : wineIdentity)
 
 You have access to real-time web search.
 \(geoInstruction)
 
-**⚠️ CRITICAL — Producer identity verification (read this first):**
-The wine information you must research is identified by BOTH its name AND its producer. Many wine names (e.g. "Barolo", "Reserva", "Chablis", "Gran Reserva") are shared by dozens of different producers. You MUST ensure that every piece of information you return — price, ratings, drinking window, tasting notes, grapes, alcohol, region, etc. — comes from a source that explicitly refers to the wine made by the EXACT producer stated in the "Known information" below.
-- If the producer is known: discard any source that does not name that exact producer. Do NOT use data from a different producer's wine, even if the wine name matches.
-- If the producer is not known: you may use general information, but state this clearly in the "remarks" field.
-- When in doubt about whether a source refers to the right producer, skip that source entirely.
-- Never mix data from different producers.
+**⚠️ CRITICAL — Producer identity (mandatory before every search):**
+This wine is uniquely identified by BOTH its name AND its producer. Many wine names are shared by dozens of producers. You MUST:
+1. Always include the producer name in EVERY web search query (e.g. "\(wineIdentity) price", "\(wineIdentity) rating Wine Advocate"). NEVER search by wine name alone.
+2. Before using any web page, verify it explicitly mentions the EXACT producer "\(producer.isEmpty ? "(see above)" : producer)". If the page does not clearly name this producer, discard it entirely.
+3. Never use data from a wine with the same name made by a different producer.
+4. If you cannot find at least one source that confirms the correct producer, omit that field entirely rather than guessing.
 
 **IMPORTANT — Multi-source research:**
 - For PRICE: Search at least 3 different wine retailers or shops. Record every individual price you find EXACTLY as shown on the website (keep the original currency, e.g. "EUR 18.90" or "USD 22.00"). Do NOT convert currencies yourself — report prices verbatim. The app will handle currency conversion automatically.
@@ -257,13 +266,13 @@ The JSON must use exactly these keys (only include keys you can fill):
   "remarks": "Brief tasting notes or interesting facts about this wine.",
   "rating": "Robert Parker, 95/100\nWine Enthusiast, 92/100",
   "priceDetails": [
-    { "source": "Retailer name", "url": "https://...", "price": "EUR 24.50" }
+    { "source": "Retailer name", "url": "https://...", "price": "EUR 24.50", "producerVerified": true }
   ],
   "drinkingWindowDetails": [
-    { "source": "Critic or site name", "url": "https://...", "readyYear": "YYYY", "bestBeforeYear": "YYYY" }
+    { "source": "Critic or site name", "url": "https://...", "readyYear": "YYYY", "bestBeforeYear": "YYYY", "producerVerified": true }
   ],
   "ratingDetails": [
-    { "critic": "Robert Parker", "score": "94/100", "url": "https://..." }
+    { "critic": "Robert Parker", "score": "94/100", "url": "https://...", "producerVerified": true }
   ],
   "sources": [
     { "title": "Page title", "url": "https://..." }
@@ -282,7 +291,8 @@ Rules:
 - "ratingDetails" must list EVERY individual critic/press score found. For each entry: "critic" is the full name of the critic or publication, "score" is the score exactly as published (e.g. "94/100", "94 points", "4 stars", "3 Bicchieri"), "url" is the source page. Omit if no scores found.
 - "sources" must list ALL web pages consulted for any field. Omit only if no web search was performed.
 - Only include fields that are MISSING from the known information above.
-- **PRODUCER VERIFICATION**: Every source listed in "priceDetails", "drinkingWindowDetails", "ratingDetails", and "sources" must explicitly refer to the wine produced by the producer stated in the known information. If you cannot confirm the producer from a source, do not use it. This is mandatory.
+- **PRODUCER VERIFICATION**: Every entry in "priceDetails", "drinkingWindowDetails", and "ratingDetails" must include `"producerVerified": true` ONLY if the source page explicitly names the producer "\(producer.isEmpty ? "(from known info)" : producer)". If you are not certain, set `"producerVerified": false`. The app will automatically discard any entry where `producerVerified` is false.
+- **SEARCH QUERIES**: Every web search you perform must include the producer name. Never search for the wine name alone.
 """
     }
 
@@ -291,7 +301,7 @@ Rules:
     private func buildWebSearchTool(searchCountries: [String]) -> [String: Any] {
         var tool: [String: Any] = [
             "type": "web_search_preview",
-            "search_context_size": "medium"
+            "search_context_size": "high"
         ]
         // Map country name → ISO code using the same list as SettingsStore
         if let firstCountry = searchCountries.first,
@@ -361,7 +371,14 @@ Rules:
         let body: [String: Any] = [
             "model": "gpt-4.1",
             "input": [
-                ["role": "system", "content": "You are a helpful wine expert. You respond only with valid JSON."],
+                ["role": "system", "content": """
+You are a precise wine research assistant. You respond ONLY with valid JSON and nothing else.
+
+ABSOLUTE RULE — Producer identity:
+A wine is uniquely identified by BOTH its name AND its producer. Many wine names are shared by dozens of different producers. Before using ANY web source, you MUST verify that the source is about the wine made by the EXACT producer specified in the user request. If a source does not explicitly name the correct producer, discard it — even if the wine name matches. Never return data from a different producer's wine. This rule overrides everything else.
+
+When searching the web, ALWAYS include the producer name in every search query (e.g. "Giacomo Conterno Barolo Monfortino 2015 price"). Never search by wine name alone.
+"""],
                 ["role": "user",   "content": prompt]
             ],
             // web_search_preview adds live web search to the tools array.
@@ -475,6 +492,8 @@ Rules:
             var points: [AIPriceDataPoint] = []
             for p in rawPrices {
                 guard let price = p["price"] as? String, !price.isEmpty else { continue }
+                // Drop entries the AI flagged as not producer-verified
+                if let verified = p["producerVerified"] as? Bool, !verified { continue }
                 let source = p["source"] as? String ?? ""
                 let url    = p["url"]    as? String ?? ""
                 points.append(AIPriceDataPoint(source: source, url: url, price: price, originalPrice: nil))
@@ -487,6 +506,8 @@ Rules:
             var points: [AIDrinkingWindowDataPoint] = []
             for w in rawWindows {
                 guard let readyYear = w["readyYear"] as? String, !readyYear.isEmpty else { continue }
+                // Drop entries the AI flagged as not producer-verified
+                if let verified = w["producerVerified"] as? Bool, !verified { continue }
                 let source         = w["source"]        as? String ?? ""
                 let url            = w["url"]           as? String ?? ""
                 let bestBefore     = w["bestBeforeYear"] as? String ?? ""
@@ -500,6 +521,8 @@ Rules:
             var points: [AIRatingDataPoint] = []
             for r in rawRatings {
                 guard let score = r["score"] as? String, !score.isEmpty else { continue }
+                // Drop entries the AI flagged as not producer-verified
+                if let verified = r["producerVerified"] as? Bool, !verified { continue }
                 let critic = r["critic"] as? String ?? ""
                 let url    = r["url"]    as? String ?? ""
                 points.append(AIRatingDataPoint(critic: critic, score: score, url: url))
