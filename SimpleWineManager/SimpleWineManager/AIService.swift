@@ -5,8 +5,7 @@ import Foundation
 enum AIProvider: String, CaseIterable, Codable {
     case openAI = "OpenAI"
 
-    /// Hint text        model: String = "gpt-5.5",
-        searchCountries: [String] = []isplayed below the API key field in Settings.
+    /// Hint text displayed below the API key field in Settings.
     var apiKeyHint: String {
         return "Get your free API key at platform.openai.com → API keys"
     }
