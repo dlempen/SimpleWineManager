@@ -432,8 +432,13 @@ struct AddWineView: View {
                     }
                 }) {
                     if isAIEnriching {
-                        ProgressView()
-                            .scaleEffect(0.85)
+                        HStack(spacing: 6) {
+                            ProgressView()
+                                .scaleEffect(0.85)
+                            Text("Searching…")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
                     } else {
                         Label("AI Fill", systemImage: "sparkles")
                             .labelStyle(.titleAndIcon)

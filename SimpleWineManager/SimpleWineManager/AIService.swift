@@ -364,7 +364,7 @@ Rules:
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 60
+        request.timeoutInterval = 180  // gpt-5.5 agentic search can take 90–180 s
 
         let body: [String: Any] = [
             "model": model,
@@ -389,7 +389,15 @@ When searching the web, ALWAYS include the producer name in every search query (
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch let urlError as URLError where urlError.code == .timedOut {
+            throw AIServiceError.networkError("The request timed out. GPT-5.5 agentic search can take up to 3 minutes — please try again. If the problem persists, switch to a faster model (e.g. GPT-5.4) in Settings → AI Model.")
+        } catch {
+            throw AIServiceError.networkError(error.localizedDescription)
+        }
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AIServiceError.invalidResponse
