@@ -26,6 +26,7 @@ struct AIPreviewView: View {
     let currentRemarks: String
     /// Currency symbol shown next to the suggested price (e.g. "€", "$")
     let currencySymbol: String
+    let currentRating: String
 
     /// Called with a filtered AIWineSuggestion containing only the checked fields,
     /// or nil if the user tapped "Discard".
@@ -72,6 +73,7 @@ struct AIPreviewView: View {
         add(id: "readyToTrinkYear", label: "Drink from",  icon: "clock.fill",           current: currentReadyToTrinkYear, suggested: suggestion.readyToTrinkYear)
         add(id: "bestBeforeYear",   label: "Best before", icon: "hourglass",            current: currentBestBeforeYear,   suggested: suggestion.bestBeforeYear)
         add(id: "remarks",          label: "Remarks",     icon: "text.bubble.fill",     current: currentRemarks,          suggested: suggestion.remarks)
+        add(id: "rating",           label: "Rating",      icon: "star.fill",            current: currentRating,           suggested: suggestion.rating)
 
         return result
     }
@@ -100,7 +102,11 @@ struct AIPreviewView: View {
         if checked.contains("readyToTrinkYear") { s.readyToTrinkYear = suggestion.readyToTrinkYear }
         if checked.contains("bestBeforeYear")   { s.bestBeforeYear   = suggestion.bestBeforeYear }
         if checked.contains("remarks")          { s.remarks          = suggestion.remarks }
-        s.sources = suggestion.sources
+        if checked.contains("rating")           { s.rating           = suggestion.rating }
+        s.sources         = suggestion.sources
+        s.priceDetails    = suggestion.priceDetails
+        s.drinkingWindowDetails = suggestion.drinkingWindowDetails
+        s.ratingDetails   = suggestion.ratingDetails
         return s
     }
 
@@ -206,6 +212,22 @@ struct AIPreviewView: View {
                 }
             }
 
+            // Ratings breakdown
+            if !suggestion.ratingDetails.isEmpty {
+                Section(
+                    header: HStack(spacing: 6) {
+                        Image(systemName: "star.fill")
+                        Text("Critic ratings")
+                    },
+                    footer: Text("Individual scores found by the AI. The summary above is used as the Rating field value.")
+                        .font(.caption)
+                ) {
+                    ForEach(suggestion.ratingDetails) { point in
+                        ratingDetailRow(point)
+                    }
+                }
+            }
+
             // Price breakdown
             if !suggestion.priceDetails.isEmpty {
                 Section(
@@ -285,6 +307,32 @@ struct AIPreviewView: View {
         }
         .padding(.vertical, 3)
         .contentShape(Rectangle())
+    }
+
+    private func ratingDetailRow(_ point: AIRatingDataPoint) -> some View {
+        let dest = URL(string: point.url.isEmpty ? "https://example.com" : point.url) ?? URL(string: "https://example.com")!
+        return Link(destination: dest) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "star.circle.fill")
+                    .foregroundColor(.yellow)
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(point.critic.isEmpty ? "Unknown critic" : point.critic)
+                        .font(.footnote)
+                        .foregroundColor(.blue)
+                        .lineLimit(1)
+                    Text(point.score)
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                        .fontWeight(.semibold)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "arrow.up.right")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 2)
+        }
     }
 
     private func priceDetailRow(_ point: AIPriceDataPoint) -> some View {

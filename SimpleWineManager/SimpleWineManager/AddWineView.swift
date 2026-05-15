@@ -488,7 +488,8 @@ struct AddWineView: View {
                     currentReadyToTrinkYear: readyToTrinkYear,
                     currentBestBeforeYear: bestBeforeYear,
                     currentRemarks: remarks,
-                    currencySymbol: settings.currencySymbol
+                    currencySymbol: settings.currencySymbol,
+                    currentRating: wineRating
                 ) { filtered in
                     if let filtered {
                         applyAISuggestion(filtered)
@@ -560,6 +561,7 @@ struct AddWineView: View {
         if let v = suggestion.readyToTrinkYear { readyToTrinkYear = v }
         if let v = suggestion.bestBeforeYear   { bestBeforeYear   = v }
         if let v = suggestion.remarks      { remarks         = v }
+        if let v = suggestion.rating       { wineRating      = v }
 
         // Category
         if let v = suggestion.category {

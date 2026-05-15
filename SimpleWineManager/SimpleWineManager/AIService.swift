@@ -42,6 +42,14 @@ struct AIDrinkingWindowDataPoint: Identifiable {
     let bestBeforeYear: String
 }
 
+/// A single critic or press rating found by the AI.
+struct AIRatingDataPoint: Identifiable {
+    let id = UUID()
+    let critic: String   // e.g. "Robert Parker", "Wine Enthusiast"
+    let score: String    // e.g. "94" or "94/100" or "4 stars"
+    let url: String      // source page
+}
+
 // MARK: - AI Wine Suggestion
 
 struct AIWineSuggestion {
@@ -59,12 +67,16 @@ struct AIWineSuggestion {
     var remarks: String?
     /// Average retail price in the user's chosen currency (numeric string, no symbol)
     var price: String?
+    /// Formatted summary of critic ratings, e.g. "RP 94, JS 92, WE 91"
+    var rating: String?
     /// Web search citations returned by the API
     var sources: [AISearchSource] = []
     /// Individual price data points that were averaged to produce `price`
     var priceDetails: [AIPriceDataPoint] = []
     /// Individual drinking-window data points that were averaged to produce readyToTrinkYear/bestBeforeYear
     var drinkingWindowDetails: [AIDrinkingWindowDataPoint] = []
+    /// Individual critic/press ratings found by the AI
+    var ratingDetails: [AIRatingDataPoint] = []
 }
 
 // MARK: - AI Service Errors
@@ -210,6 +222,7 @@ You have access to real-time web search.
 **IMPORTANT — Multi-source research:**
 - For PRICE: Search at least 3 different wine retailers or shops. Record every individual price you find EXACTLY as shown on the website (keep the original currency, e.g. "EUR 18.90" or "USD 22.00"). Do NOT convert currencies yourself — report prices verbatim. The app will handle currency conversion automatically.
 - For DRINKING WINDOW: Search at least 3 different wine critics, wine databases, or producer pages. Record every recommended window you find. Calculate the consensus and return "readyToTrinkYear" and "bestBeforeYear" as the average. Also return every individual window you found in "drinkingWindowDetails".
+- For RATINGS: Search for scores given to this wine by well-known critics and press publications. Look for scores from sources such as (but not limited to): Robert Parker / Wine Advocate, James Suckling, Wine Enthusiast, Wine Spectator, Luca Maroni, Gambero Rosso, Falstaff, Vinum, Guía Peñín, Guía Proensa, Markus A. Dilger, Decanter, Jancis Robinson. Return every score you find in "ratingDetails" and a compact summary string in "rating" (e.g. "RP 94, JS 92, WE 91").
 - For SOURCES: List ALL websites you consulted for any field — not just price. Every search result used must appear in "sources".
 
 Known information:
@@ -235,11 +248,15 @@ The JSON must use exactly these keys (only include keys you can fill):
   "bestBeforeYear": "YYYY",
   "price": "...",
   "remarks": "Brief tasting notes or interesting facts about this wine.",
+  "rating": "RP 94, JS 92, WE 91",
   "priceDetails": [
     { "source": "Retailer name", "url": "https://...", "price": "EUR 24.50" }
   ],
   "drinkingWindowDetails": [
     { "source": "Critic or site name", "url": "https://...", "readyYear": "YYYY", "bestBeforeYear": "YYYY" }
+  ],
+  "ratingDetails": [
+    { "critic": "Robert Parker", "score": "94/100", "url": "https://..." }
   ],
   "sources": [
     { "title": "Page title", "url": "https://..." }
@@ -254,6 +271,8 @@ Rules:
 - "price" must be the AVERAGE of the prices found across all sources, as a plain number (no currency symbol, no spaces). Example: "24.50". Use the currency actually shown on the websites (do not convert). Omit if no prices found.
 - "priceDetails" must list EVERY individual price found. For each entry, "price" must be the value exactly as shown on the website, formatted as "CCC XX.XX" (e.g. "EUR 18.90", "USD 22.00"). The app will convert to the user's currency automatically. Omit the entire "priceDetails" key if no prices found.
 - "drinkingWindowDetails" must list EVERY individual drinking window found. Include source name, URL, readyYear and bestBeforeYear as 4-digit strings. Omit if no windows found.
+- "rating" must be a compact, comma-separated summary of all critic scores found, using standard abbreviations where applicable (e.g. "RP 94, JS 92, WE 91, Falstaff 93"). Omit if no scores found.
+- "ratingDetails" must list EVERY individual critic/press score found. For each entry: "critic" is the full name of the critic or publication, "score" is the score exactly as published (e.g. "94/100", "94 points", "4 stars", "3 Bicchieri"), "url" is the source page. Omit if no scores found.
 - "sources" must list ALL web pages consulted for any field. Omit only if no web search was performed.
 - Only include fields that are MISSING from the known information above.
 """
@@ -435,6 +454,7 @@ Rules:
         suggestion.readyToTrinkYear = json["readyToTrinkYear"] as? String
         suggestion.bestBeforeYear   = json["bestBeforeYear"]   as? String
         suggestion.remarks          = json["remarks"]          as? String
+        suggestion.rating           = json["rating"]           as? String
         // "price" may be returned as a JSON string OR a JSON number — handle both
         if let priceStr = json["price"] as? String {
             suggestion.price = priceStr
@@ -465,6 +485,18 @@ Rules:
                 points.append(AIDrinkingWindowDataPoint(source: source, url: url, readyYear: readyYear, bestBeforeYear: bestBefore))
             }
             suggestion.drinkingWindowDetails = points
+        }
+
+        // ratingDetails
+        if let rawRatings = json["ratingDetails"] as? [[String: Any]] {
+            var points: [AIRatingDataPoint] = []
+            for r in rawRatings {
+                guard let score = r["score"] as? String, !score.isEmpty else { continue }
+                let critic = r["critic"] as? String ?? ""
+                let url    = r["url"]    as? String ?? ""
+                points.append(AIRatingDataPoint(critic: critic, score: score, url: url))
+            }
+            suggestion.ratingDetails = points
         }
 
         // Sources: prefer explicit JSON array; fall back to annotation-derived sources
